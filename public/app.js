@@ -850,33 +850,34 @@ function renderDombasChart(){
 function osloNowISO(){ return new Date().toLocaleString("sv-SE",{timeZone:"Europe/Oslo"}).replace(" ","T").slice(0,13); }
 function pressTrendWord(d){ if(d<=-3)return "fallende"; if(d<=-1)return "svakt fallende"; if(d>=3)return "stigende"; if(d>=1)return "svakt stigende"; return "stabilt"; }
 
+function closestByTime(arr, target){ let best=null,bd=Infinity; for(const p of arr){ const d=Math.abs(p.tm-target); if(d<bd){bd=d;best=p;} } return best; }
 async function loadPressureChart(){
   STATE.press=null;
-  const c=STATE.cfg;
-  const d=await getJSON(`/api/pressure?lat=${c.lat}&lon=${c.lon}`);
-  const h=d&&d.hourly;
-  if(!h||!h.time||!h.pressure_msl) return;
-  const pts=[];
-  for(let i=0;i<h.time.length;i++){ if(h.pressure_msl[i]!=null) pts.push({t:h.time[i], v:h.pressure_msl[i]}); }
-  if(!pts.length) return;
-  let obs=null;
+  // PROGNOSE: lufttrykk fra MET locationforecast (allerede lastet, virker på Render)
+  const ts=STATE.weather&&STATE.weather.properties&&STATE.weather.properties.timeseries;
+  const fc=[];
+  if(ts){ for(const e of ts){ const det=e.data.instant.details; const p=det&&det.air_pressure_at_sea_level;
+    if(p!=null) fc.push({tm:new Date(e.time).getTime(), v:p}); } }
+  // HISTORIKK: faktisk målt lufttrykk fra Frost (Dovre-Lannem)
+  let hist=[];
   if(STATE.cfg.hasFrost){
     try{
       const o=await getJSON(`/api/obsseries?source=SN16400&element=air_pressure_at_sea_level&days=14`);
-      if(o&&o.points&&o.points.length) obs=o.points;   // {t (UTC), v}
+      if(o&&o.points&&o.points.length) hist=o.points.map(p=>({tm:new Date(p.t).getTime(), v:p.v}));
     }catch(e){}
   }
-  STATE.press={pts, obs};
+  if(!fc.length && !hist.length) return;
+  STATE.press={hist, fc};
 }
 function renderPressureChart(){
   const host=$("pressChart"), cap=$("pressCap"), leg=$("pressLegend"), P=STATE.press;
-  if(!P||!P.pts.length){ host.innerHTML=""; if(leg) leg.innerHTML=""; cap.textContent="Ingen trykkdata."; return; }
-  const pts=P.pts.map(p=>({t:p.t, tm:new Date(p.t).getTime(), v:p.v})), N=pts.length, nowISO=osloNowISO();
-  let split=P.pts.findIndex(p=>p.t.slice(0,13)>=nowISO); if(split<0) split=N-1;
-  const t0=pts[0].tm, t1=pts[N-1].tm;
-  const obs=(P.obs||[]).map(p=>({tm:new Date(p.t).getTime(), v:p.v})).filter(p=>p.tm>=t0&&p.tm<=t1);
-  const vals=pts.map(p=>p.v).concat(obs.map(p=>p.v));
-  let lo=Math.min(...vals), hi=Math.max(...vals); const pad=(hi-lo)*0.12||2; lo-=pad; hi+=pad;
+  if(!P||(!P.hist.length&&!P.fc.length)){ host.innerHTML=""; if(leg) leg.innerHTML=""; cap.textContent="Ingen trykkdata."; return; }
+  const hist=P.hist, fc=P.fc;
+  const nowMs = hist.length? hist[hist.length-1].tm : fc[0].tm;
+  const t0 = hist.length? hist[0].tm : fc[0].tm;
+  const t1 = fc.length? fc[fc.length-1].tm : hist[hist.length-1].tm;
+  const allV=hist.map(p=>p.v).concat(fc.map(p=>p.v));
+  let lo=Math.min(...allV), hi=Math.max(...allV); const pad=(hi-lo)*0.12||2; lo-=pad; hi+=pad;
   const W=1000,H=300,pL=46,pR=16,pT=14,pB=40,pw=W-pL-pR,ph=H-pT-pB;
   const xt=tm=>pL+(tm-t0)/(t1-t0)*pw, y=v=>pT+ph*(1-(v-lo)/(hi-lo));
 
@@ -888,40 +889,39 @@ function renderPressureChart(){
   [[1013,"1013 standard"],[1000,"1000 lavt"]].forEach(([rv,lbl])=>{ if(rv>lo&&rv<hi){
     refs+=`<line x1="${pL}" y1="${y(rv).toFixed(1)}" x2="${pL+pw}" y2="${y(rv).toFixed(1)}" stroke="rgba(126,154,152,.3)" stroke-dasharray="2 6"/><text x="${pL+4}" y="${(y(rv)-4).toFixed(1)}" font-size="10" fill="#52706e">${lbl}</text>`; } });
   let xlab="",lastDay="";
-  pts.forEach((p)=>{ const day=p.t.slice(0,10); if(day!==lastDay){ lastDay=day; if(parseInt(day.slice(8),10)%3===0) xlab+=`<text x="${xt(p.tm).toFixed(1)}" y="${H-pB+16}" text-anchor="middle" font-size="10.5" fill="#52706e" font-family="ui-monospace,monospace">${day.slice(8)}.${day.slice(5,7)}</text>`; } });
-  const histPath=pts.slice(0,split+1).map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
-  const fcPath=pts.slice(split).map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
-  const obsPath=obs.length?obs.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
-  const nowX=xt(pts[split].tm).toFixed(1);
+  hist.concat(fc).forEach(p=>{ const dk=osloDateKey(new Date(p.tm)); if(dk!==lastDay){ lastDay=dk; if(parseInt(dk.slice(8),10)%3===0) xlab+=`<text x="${xt(p.tm).toFixed(1)}" y="${H-pB+16}" text-anchor="middle" font-size="10.5" fill="#52706e" font-family="ui-monospace,monospace">${dk.slice(8)}.${dk.slice(5,7)}</text>`; } });
+  const histPath=hist.length?hist.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
+  const fcPath=fc.length?fc.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
+  const nowX=xt(nowMs).toFixed(1);
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:300px">
     ${grid}${refs}
     <line x1="${nowX}" y1="${pT}" x2="${nowX}" y2="${H-pB}" stroke="rgba(79,182,168,.5)" stroke-dasharray="4 3"/>
     <text x="${nowX}" y="${pT+10}" text-anchor="middle" font-size="10" fill="#4fb6a8">nå</text>
-    ${obsPath?`<path d="${obsPath}" fill="none" stroke="#5e86b0" stroke-width="1.4" opacity="0.9"/>`:""}
     <path d="${histPath}" fill="none" stroke="#4fb6a8" stroke-width="2"/>
     <path d="${fcPath}" fill="none" stroke="#e0935a" stroke-width="2" stroke-dasharray="6 4"/>
     ${axL}${xlab}<text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">hPa</text>
   </svg>`;
   if(leg) leg.innerHTML=`
-    <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Modell historikk</span>
-    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Modell prognose</span>`+
-    (obs.length?`<span class="lg"><span class="sw" style="border-color:#5e86b0"></span>Målt (Dovre-Lannem)</span>`:``);
+    <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Målt siste 14 d (Frost)</span>
+    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>MET-prognose</span>`;
 
   // analyse
-  const nowV=pts[split].v;
-  const d24back=nowV-pts[Math.max(0,split-24)].v;
-  const d24=pts[Math.min(N-1,split+24)].v-nowV;
-  const d72=pts[N-1].v-nowV;
-  let worst=0,worstAt=-1;
-  for(let i=split;i<N-12;i++){ const drop=pts[i+12].v-pts[i].v; if(drop<worst){worst=drop;worstAt=i;} }
+  const nowV = hist.length? hist[hist.length-1].v : fc[0].v;
+  const b24 = hist.length? closestByTime(hist, nowMs-24*36e5) : null;
+  const d24back = b24? nowV-b24.v : 0;
+  const n24 = fc.length? closestByTime(fc, nowMs+24*36e5) : null;
+  const d24 = n24? n24.v-nowV : 0;
+  const d72 = fc.length? fc[fc.length-1].v-nowV : 0;
+  let worst=0,worstTm=null;
+  for(const p of fc){ const later=closestByTime(fc,p.tm+12*36e5); if(later&&later.tm>p.tm){ const drop=later.v-p.v; if(drop<worst){worst=drop;worstTm=p.tm;} } }
   let frontTxt="";
-  if(worst<=-5){ const day=pts[worstAt].t.slice(8,10)+"."+pts[worstAt].t.slice(5,7);
-    frontTxt=`Et markert trykkfall (~${Math.abs(Math.round(worst))} hPa på 12 t) rundt ${day} varsler en front — ofte et godt vindu rett før og under. `; }
-  const dNext6=pts[Math.min(N-1,split+6)].v-nowV;
-  const cat=pressCat(nowV,dNext6), sub=sPress[cat];
+  if(worst<=-5){ const dk=osloDateKey(new Date(worstTm));
+    frontTxt=`Et markert trykkfall (~${Math.abs(Math.round(worst))} hPa på 12 t) rundt ${dk.slice(8)}.${dk.slice(5,7)} varsler en front — ofte et godt vindu rett før og under. `; }
+  const n6=fc.length?closestByTime(fc,nowMs+6*36e5):null;
+  const cat=pressCat(nowV,(n6?n6.v-nowV:0)), sub=sPress[cat];
   cap.innerHTML=`Lufttrykk nå <b>${Math.round(nowV)} hPa</b>, <b>${pressTrendWord(d24back)}</b> siste døgn. `+
-    `Neste 24 t: ${pressTrendWord(d24)}; mot slutten av uka ${pressTrendWord(d72)}. `+frontTxt+
-    `<span class="muted">Gir nå kategori «${PRESS_LABEL[cat]}» → delskår ${sub.toFixed(2)} (vekt 0,16) i Fiskeindeksen. Kilde: Open-Meteo MSL-trykk.</span>`;
+    `Neste 24 t: ${pressTrendWord(d24)}; videre ${pressTrendWord(d72)}. `+frontTxt+
+    `<span class="muted">Gir nå «${PRESS_LABEL[cat]}» → delskår ${sub.toFixed(2)} (vekt 0,16). Kilder: målt Frost (Dovre-Lannem) + MET-prognose.</span>`;
 }
 
 /* ---------- fiskelogg ---------- */
