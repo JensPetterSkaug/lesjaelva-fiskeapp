@@ -129,23 +129,9 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .fcday .fwind svg{flex:0 0 auto}
 .fc-spark{margin-top:6px}
 
-/* vindkart */
+/* kart-seksjoner */
 .mapsec{margin-bottom:14px}
-.mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--panel2);min-height:160px}
-.mapimg{display:block;width:100%;height:auto}
-.mapphold{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
-.mapphold-inner{max-width:360px}
-.mapphold-ico{font-size:34px;margin-bottom:8px}
-.mapphold p{color:var(--mut);font-size:13px;line-height:1.6;margin:0 0 14px}
-.windrose{position:absolute;top:12px;right:12px;width:128px;height:128px;
-  background:rgba(8,18,20,.66);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(3px)}
-.mapcap{position:absolute;left:12px;bottom:12px;background:rgba(8,18,20,.78);border:1px solid var(--line);
-  border-radius:10px;padding:9px 13px;font-size:13px;color:var(--ink);backdrop-filter:blur(3px);max-width:calc(100% - 24px)}
-.mapcap b{color:var(--teal)}
-.mapcap .ms{font-family:var(--mono)}
-.maptools{display:flex;justify-content:flex-end;margin-top:10px}
 .btn.sm{padding:6px 12px;font-size:12px}
-@media(max-width:560px){.windrose{width:96px;height:96px;top:8px;right:8px}}
 
 /* dombås-graf */
 .chartsec{margin-bottom:14px}

@@ -518,58 +518,7 @@ function renderSpark(){
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;
 }
 
-function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderMap(); renderLeeMap(); renderLeeList(); }
-
-/* ---------- vindkart ---------- */
-function renderMap(){
-  const img=$("mapImg"), phold=$("mapPhold"), rose=$("windRose"), cap=$("mapCap");
-  const mf=STATE.cfg && STATE.cfg.mapFile;
-  if(!mf){
-    img.style.display="none"; phold.style.display="flex"; rose.style.display="none"; cap.style.display="none";
-    $("mapWhen").textContent="";
-    return;
-  }
-  if(img.dataset.src!==mf){ img.src="/"+mf+"?v="+Date.now(); img.dataset.src=mf; }
-  img.style.display="block"; phold.style.display="none";
-
-  const sel=STATE.selected; let dir,spd,label;
-  if(sel==null && STATE.now){ dir=STATE.now.windDir; spd=STATE.now.now.wind; label="Nå"; }
-  else if(STATE.days.length){ const d=STATE.days[sel==null?0:sel]; dir=d.md.windDir; spd=d.md.wind; label=dayLabel(d.date)+(d.clim?" · klimatologi":""); }
-  else { rose.style.display="none"; cap.style.display="none"; return; }
-
-  $("mapWhen").textContent="· "+label;
-  drawWindRose(dir);
-  rose.style.display="block";
-  if(dir!=null){
-    cap.innerHTML=`<b>${label}</b> · vind fra <b>${degToCompass(dir)}</b> (${Math.round(dir)}°) · <span class="ms">${fmt1(spd)} m/s</span> · blåser mot ${degToCompass((dir+180)%360)}`;
-  } else {
-    cap.innerHTML=`<b>${label}</b> · vindretning n/a (klimatologi) · <span class="ms">${fmt1(spd)} m/s</span>`;
-  }
-  cap.style.display="block";
-}
-function drawWindRose(dir){
-  const c=70, R=52;
-  let labels="";
-  [["N",0],["Ø",90],["S",180],["V",270]].forEach(([t,a])=>{
-    const rad=(a-90)*Math.PI/180;
-    const lx=c+Math.cos(rad)*(R-2), ly=c+Math.sin(rad)*(R-2);
-    labels+=`<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" font-size="13" font-family="ui-monospace,monospace" fill="${t==='N'?'#4fb6a8':'#7e9a98'}" font-weight="${t==='N'?700:500}">${t}</text>`;
-  });
-  let arrow;
-  if(dir!=null){
-    const to=(dir+180)%360;
-    arrow=`<g transform="rotate(${to} ${c} ${c})">
-      <line x1="${c}" y1="${c+28}" x2="${c}" y2="${c-30}" stroke="#e0935a" stroke-width="3.4" stroke-linecap="round"/>
-      <path d="M${c} ${c-40} L${c-8} ${c-26} L${c+8} ${c-26} Z" fill="#e0935a"/>
-      <circle cx="${c}" cy="${c}" r="3.4" fill="#e0935a"/></g>`;
-  } else {
-    arrow=`<text x="${c}" y="${c+4}" text-anchor="middle" font-size="11" fill="#52706e">n/a</text>`;
-  }
-  $("windRose").innerHTML=
-    `<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="rgba(79,182,168,0.25)"/>`+
-    `<circle cx="${c}" cy="${c}" r="${R-12}" fill="none" stroke="rgba(126,154,152,0.14)"/>`+
-    arrow+labels;
-}
+function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderLeeMap(); renderLeeList(); }
 
 /* ---------- station-sub + footer ---------- */
 function renderMeta(){
@@ -601,7 +550,7 @@ async function refresh(){
     await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
     buildDays();
     STATE.selected=null;
-    renderMeta(); renderHero(); renderForecast(); renderMap();
+    renderMeta(); renderHero(); renderForecast();
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
@@ -1141,25 +1090,6 @@ $("saveObs").onclick=saveObs;
 $("ob_dato").value=osloDateKey(new Date());
 loadObsList();
 
-/* kartopplasting */
-function pickMap(){ $("mapFileInput").click(); }
-$("mapUploadBtn").onclick=pickMap;
-$("mapUploadBtn2").onclick=pickMap;
-$("mapFileInput").onchange=e=>{
-  const f=e.target.files&&e.target.files[0]; if(!f) return;
-  const reader=new FileReader();
-  reader.onload=async()=>{
-    try{
-      const r=await fetch("/api/mapupload",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({dataUrl:reader.result})});
-      const j=await r.json();
-      if(j.error){ alert("Kunne ikke lagre kart: "+j.error); return; }
-      await loadConfig();
-      $("mapImg").dataset.src=""; // tving ny innlasting
-      renderMap();
-    }catch(err){ alert("Opplasting feilet: "+err); }
-  };
-  reader.readAsDataURL(f);
-};
 $("modalCancel").onclick=closeModal;
 $("modalSave").onclick=saveModal;
 $("modalBg").onclick=e=>{ if(e.target===$("modalBg")) closeModal(); };

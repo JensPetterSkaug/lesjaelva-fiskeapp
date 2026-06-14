@@ -75,7 +75,7 @@ Tilsvarende fungerer **Railway** / **Fly.io** (`Procfile` + `NVE_API_KEY`-miljø
 
 **Verdt å vite ved en delt deploy:**
 - NVE-nøkkelen ligger trygt server-side (eksponeres aldri i nettleseren), men **alle med lenken** kan se data,
-  legge inn observasjoner og bytte kartbilde. Greit for venner — ikke en offentlig tjeneste.
+  legge inn observasjoner. Greit for venner — ikke en offentlig tjeneste.
 - Render free-tier har **flyktig filsystem**: fiskeloggen (`data/`) nullstilles ved redeploy/dvale. Vil du ta vare
   på loggen over tid, kjør lokalt eller legg på et persistent volum.
 

@@ -22,7 +22,6 @@ import base64
 import io
 import json
 import os
-import re
 import sys
 import time
 import urllib.parse
@@ -78,7 +77,6 @@ DEFAULTS = {
     "lat": 62.1235,
     "lon": 8.8678,
     "altitude": 560,
-    "mapFile": "Lesjaelva sone 7.png",   # ligger i public/, vises by default ved deploy
     # lokale MET-værpunkt for lufttemp + vind (koordinater fra Kartverket)
     "weatherPoints": [
         {"label": "Brustugubrue", "lat": 62.0850, "lon": 9.0302, "altitude": 540},
@@ -405,8 +403,6 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/config":
             return self.handle_post_config()
-        if parsed.path == "/api/mapupload":
-            return self.handle_map_upload()
         if parsed.path == "/api/log/forecast":
             return self.handle_log_forecast()
         if parsed.path == "/api/log/observation":
@@ -439,29 +435,6 @@ class Handler(BaseHTTPRequestHandler):
         append_jsonl(OBS_PATH, row)
         self.send_json({"ok": True})
 
-    def handle_map_upload(self):
-        length = int(self.headers.get("Content-Length", "0") or "0")
-        raw = self.rfile.read(length) if length else b"{}"
-        try:
-            data = json.loads(raw.decode("utf-8"))
-        except Exception:
-            return self.send_json({"error": "bad_json"}, 400)
-        m = re.match(r"data:image/(png|jpeg|jpg|webp);base64,(.*)$", data.get("dataUrl", ""), re.S)
-        if not m:
-            return self.send_json({"error": "bad_image"}, 400)
-        ext = {"jpeg": "jpg"}.get(m.group(1), m.group(1))
-        try:
-            blob = base64.b64decode(m.group(2))
-        except Exception:
-            return self.send_json({"error": "bad_b64"}, 400)
-        if len(blob) > 12 * 1024 * 1024:
-            return self.send_json({"error": "too_large"}, 400)
-        fname = "kart." + ext
-        with open(os.path.join(PUBLIC, fname), "wb") as f:
-            f.write(blob)
-        save_config({"mapFile": fname})
-        self.send_json({"ok": True, "mapFile": fname})
-
     # ---- config ----
     def handle_get_config(self):
         cfg = load_config()
@@ -475,7 +448,6 @@ class Handler(BaseHTTPRequestHandler):
             "altitude": cfg.get("altitude"),
             "clarityOverride": cfg.get("clarityOverride"),
             "tempOverride": cfg.get("tempOverride"),
-            "mapFile": cfg.get("mapFile"),
             "weatherPoints": cfg.get("weatherPoints"),
             "contact": CONTACT,
         })
