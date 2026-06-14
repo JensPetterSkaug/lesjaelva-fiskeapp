@@ -43,7 +43,9 @@ PROG_COLS = [
     ("vanntemp_lesja", "Vanntemp Lesjavatnet (°C)"), ("vannf_lesja", "Vannføring Lesjavatnet (m³/s)"),
     ("vannfkat_lesja", "Vannføring-kategori"),
     ("vanntemp_dombas", "Vanntemp Dombås (°C)"), ("vannf_dombas", "Vannføring Dombås (m³/s)"),
-    ("lufttemp", "Lufttemp (°C)"), ("sky", "Skydekke (%)"), ("vind", "Vind (m/s)"), ("vindretning", "Vindretning"),
+    ("lufttemp", "Lufttemp sentrum (°C)"), ("sky", "Skydekke (%)"), ("vind", "Vind sentrum (m/s)"), ("vindretning", "Vindretning sentrum"),
+    ("lufttemp_brustugu", "Lufttemp Brustugubrue (°C)"), ("vind_brustugu", "Vind Brustugubrue (m/s)"), ("vindretn_brustugu", "Vindretning Brustugubrue"),
+    ("lufttemp_leirmo", "Lufttemp Leirmo (°C)"), ("vind_leirmo", "Vind Leirmo (m/s)"), ("vindretn_leirmo", "Vindretning Leirmo"),
     ("lufttrykk", "Lufttrykk (hPa)"), ("nedbor", "Nedbør (mm)"), ("klarhet", "Vannklarhet (utledet)"),
     ("klekking", "Klekking"), ("begrensende", "Begrensende faktor"),
 ]

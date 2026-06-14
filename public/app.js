@@ -830,6 +830,16 @@ function secondaryWater(){
   const sts=STATE.cfg.stations||[];
   return (sts[1] && STATE.water) ? STATE.water[sts[1].id] : null;
 }
+/* lufttemp + vind for de lokale værpunktene -> Excel-kolonner */
+function wptCols(){
+  const find=n=>(STATE.wpts||[]).find(p=>p.label&&p.label.toLowerCase().startsWith(n));
+  const dir=p=>(p&&p.windDir!=null)?`${degToCompass(p.windDir)} (${Math.round(p.windDir)}°)`:"";
+  const bru=find("brustugu"), lei=find("leirmo");
+  return {
+    lufttemp_brustugu: bru?round1(bru.air):"", vind_brustugu: bru?round1(bru.wind):"", vindretn_brustugu: dir(bru),
+    lufttemp_leirmo: lei?round1(lei.air):"", vind_leirmo: lei?round1(lei.wind):"", vindretn_leirmo: dir(lei)
+  };
+}
 async function logForecast(){
   if(!STATE.now) return;
   const now=STATE.now, w=now.now;
@@ -847,6 +857,7 @@ async function logForecast(){
     lufttemp: round1(w.air), sky: w.cloud!=null?Math.round(w.cloud):"",
     vind: round1(w.wind),
     vindretning: now.windDir!=null?`${degToCompass(now.windDir)} (${Math.round(now.windDir)}°)`:"",
+    ...wptCols(),
     lufttrykk: w.press!=null?Math.round(w.press):"", nedbor: round1(w.precip),
     klarhet: CLAR_LABEL[now.clarity]||"", klekking: HATCH_LABEL[now.state.hatch]||"",
     begrensende: PART_LABELS[now.idx.limiting.key]||""
