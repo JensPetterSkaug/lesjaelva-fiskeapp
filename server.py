@@ -46,6 +46,7 @@ PROG_COLS = [
     ("lufttemp", "Lufttemp sentrum (°C)"), ("sky", "Skydekke (%)"), ("vind", "Vind sentrum (m/s)"), ("vindretning", "Vindretning sentrum"),
     ("lufttemp_brustugu", "Lufttemp Brustugubrue (°C)"), ("vind_brustugu", "Vind Brustugubrue (m/s)"), ("vindretn_brustugu", "Vindretning Brustugubrue"),
     ("lufttemp_leirmo", "Lufttemp Leirmo (°C)"), ("vind_leirmo", "Vind Leirmo (m/s)"), ("vindretn_leirmo", "Vindretning Leirmo"),
+    ("lufttemp_lora_malt", "Lufttemp Lora MÅLT (°C)"), ("vind_lora_malt", "Vind Lora MÅLT (m/s)"), ("vindretn_lora_malt", "Vindretning Lora MÅLT"),
     ("lufttrykk", "Lufttrykk (hPa)"), ("nedbor", "Nedbør (mm)"), ("klarhet", "Vannklarhet (utledet)"),
     ("klekking", "Klekking"), ("begrensende", "Begrensende faktor"),
 ]
@@ -369,6 +370,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_pressure(qs)
         if path == "/api/obs":
             return self.handle_obs(qs)
+        if path == "/api/obsseries":
+            return self.handle_obs_series(qs)
         if path.startswith("/api/nve/"):
             return self.handle_nve(path[len("/api/nve/"):], parsed.query)
         if path == "/api/normals":
@@ -539,6 +542,37 @@ class Handler(BaseHTTPRequestHandler):
                     values[o["elementId"]] = o["value"]
                     units[o["elementId"]] = o.get("unit")
             self.send_json({"source": source, "time": tlast, "values": values, "units": units})
+        except Exception as e:
+            self.send_json({"error": "frost_parse", "detail": str(e)}, 200)
+
+    # ---- Frost: tidsserie (f.eks. målt lufttrykk siste N dager) ----
+    def handle_obs_series(self, qs):
+        import datetime as _dt
+        cfg = load_config()
+        cid = cfg.get("frostClientId") or os.environ.get("FROST_CLIENT_ID")
+        if not cid:
+            return self.send_json({"error": "no_frost"}, 200)
+        source = (qs.get("source") or ["SN16400"])[0]
+        element = (qs.get("element") or ["air_pressure_at_sea_level"])[0]
+        try:
+            days = max(1, min(60, int((qs.get("days") or ["14"])[0])))
+        except Exception:
+            days = 14
+        now = _dt.datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        fr = now - _dt.timedelta(days=days)
+        rt = fr.strftime("%Y-%m-%dT%H:%M:%SZ") + "/" + now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        url = ("https://frost.met.no/observations/v0.jsonld?sources=%s&referencetime=%s&elements=%s"
+               % (urllib.parse.quote(source), urllib.parse.quote(rt), urllib.parse.quote(element)))
+        auth = base64.b64encode((cid + ":").encode()).decode()
+        status, ct, body = fetch(url, {"Authorization": "Basic " + auth, "Accept": "application/json"})
+        try:
+            d = json.loads(body)
+            pts = []
+            for entry in d.get("data", []):
+                obs = entry.get("observations", [])
+                if obs and obs[0].get("value") is not None:
+                    pts.append({"t": entry.get("referenceTime"), "v": obs[0]["value"]})
+            self.send_json({"source": source, "element": element, "points": pts})
         except Exception as e:
             self.send_json({"error": "frost_parse", "detail": str(e)}, 200)
 

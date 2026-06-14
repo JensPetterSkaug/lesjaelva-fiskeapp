@@ -858,17 +858,27 @@ async function loadPressureChart(){
   if(!h||!h.time||!h.pressure_msl) return;
   const pts=[];
   for(let i=0;i<h.time.length;i++){ if(h.pressure_msl[i]!=null) pts.push({t:h.time[i], v:h.pressure_msl[i]}); }
-  if(pts.length) STATE.press={pts};
+  if(!pts.length) return;
+  let obs=null;
+  if(STATE.cfg.hasFrost){
+    try{
+      const o=await getJSON(`/api/obsseries?source=SN16400&element=air_pressure_at_sea_level&days=14`);
+      if(o&&o.points&&o.points.length) obs=o.points;   // {t (UTC), v}
+    }catch(e){}
+  }
+  STATE.press={pts, obs};
 }
 function renderPressureChart(){
-  const host=$("pressChart"), cap=$("pressCap"), P=STATE.press;
-  if(!P||!P.pts.length){ host.innerHTML=""; cap.textContent="Ingen trykkdata."; return; }
-  const pts=P.pts, N=pts.length, nowISO=osloNowISO();
-  let split=pts.findIndex(p=>p.t.slice(0,13)>=nowISO); if(split<0) split=N-1;
-  const vals=pts.map(p=>p.v);
+  const host=$("pressChart"), cap=$("pressCap"), leg=$("pressLegend"), P=STATE.press;
+  if(!P||!P.pts.length){ host.innerHTML=""; if(leg) leg.innerHTML=""; cap.textContent="Ingen trykkdata."; return; }
+  const pts=P.pts.map(p=>({t:p.t, tm:new Date(p.t).getTime(), v:p.v})), N=pts.length, nowISO=osloNowISO();
+  let split=P.pts.findIndex(p=>p.t.slice(0,13)>=nowISO); if(split<0) split=N-1;
+  const t0=pts[0].tm, t1=pts[N-1].tm;
+  const obs=(P.obs||[]).map(p=>({tm:new Date(p.t).getTime(), v:p.v})).filter(p=>p.tm>=t0&&p.tm<=t1);
+  const vals=pts.map(p=>p.v).concat(obs.map(p=>p.v));
   let lo=Math.min(...vals), hi=Math.max(...vals); const pad=(hi-lo)*0.12||2; lo-=pad; hi+=pad;
   const W=1000,H=300,pL=46,pR=16,pT=14,pB=40,pw=W-pL-pR,ph=H-pT-pB;
-  const x=i=>pL+i*(pw/(N-1)), y=v=>pT+ph*(1-(v-lo)/(hi-lo));
+  const xt=tm=>pL+(tm-t0)/(t1-t0)*pw, y=v=>pT+ph*(1-(v-lo)/(hi-lo));
 
   let grid="",axL="";
   for(let t=0;t<=4;t++){ const vv=lo+(hi-lo)*t/4, yy=y(vv);
@@ -878,18 +888,24 @@ function renderPressureChart(){
   [[1013,"1013 standard"],[1000,"1000 lavt"]].forEach(([rv,lbl])=>{ if(rv>lo&&rv<hi){
     refs+=`<line x1="${pL}" y1="${y(rv).toFixed(1)}" x2="${pL+pw}" y2="${y(rv).toFixed(1)}" stroke="rgba(126,154,152,.3)" stroke-dasharray="2 6"/><text x="${pL+4}" y="${(y(rv)-4).toFixed(1)}" font-size="10" fill="#52706e">${lbl}</text>`; } });
   let xlab="",lastDay="";
-  pts.forEach((p,i)=>{ const day=p.t.slice(0,10); if(day!==lastDay){ lastDay=day; if(parseInt(day.slice(8),10)%3===0) xlab+=`<text x="${x(i).toFixed(1)}" y="${H-pB+16}" text-anchor="middle" font-size="10.5" fill="#52706e" font-family="ui-monospace,monospace">${day.slice(8)}.${day.slice(5,7)}</text>`; } });
-  const histPath=pts.slice(0,split+1).map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
-  const fcPath=pts.slice(split).map((p,i)=>(i?"L":"M")+x(split+i).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
-  const nowX=x(split).toFixed(1);
+  pts.forEach((p)=>{ const day=p.t.slice(0,10); if(day!==lastDay){ lastDay=day; if(parseInt(day.slice(8),10)%3===0) xlab+=`<text x="${xt(p.tm).toFixed(1)}" y="${H-pB+16}" text-anchor="middle" font-size="10.5" fill="#52706e" font-family="ui-monospace,monospace">${day.slice(8)}.${day.slice(5,7)}</text>`; } });
+  const histPath=pts.slice(0,split+1).map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
+  const fcPath=pts.slice(split).map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
+  const obsPath=obs.length?obs.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
+  const nowX=xt(pts[split].tm).toFixed(1);
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:300px">
     ${grid}${refs}
     <line x1="${nowX}" y1="${pT}" x2="${nowX}" y2="${H-pB}" stroke="rgba(79,182,168,.5)" stroke-dasharray="4 3"/>
     <text x="${nowX}" y="${pT+10}" text-anchor="middle" font-size="10" fill="#4fb6a8">nå</text>
+    ${obsPath?`<path d="${obsPath}" fill="none" stroke="#5e86b0" stroke-width="1.4" opacity="0.9"/>`:""}
     <path d="${histPath}" fill="none" stroke="#4fb6a8" stroke-width="2"/>
     <path d="${fcPath}" fill="none" stroke="#e0935a" stroke-width="2" stroke-dasharray="6 4"/>
     ${axL}${xlab}<text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">hPa</text>
   </svg>`;
+  if(leg) leg.innerHTML=`
+    <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Modell historikk</span>
+    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Modell prognose</span>`+
+    (obs.length?`<span class="lg"><span class="sw" style="border-color:#5e86b0"></span>Målt (Dovre-Lannem)</span>`:``);
 
   // analyse
   const nowV=pts[split].v;
@@ -924,6 +940,16 @@ function wptCols(){
     lufttemp_leirmo: lei?round1(lei.air):"", vind_leirmo: lei?round1(lei.wind):"", vindretn_leirmo: dir(lei)
   };
 }
+/* faktisk målt (Frost, Lora) -> Excel-kolonner */
+function obsCols(){
+  const o=STATE.obsStn;
+  const dir=(o&&o.windDir!=null)?`${degToCompass(o.windDir)} (${Math.round(o.windDir)}°)`:"";
+  return {
+    lufttemp_lora_malt: o&&o.air!=null?round1(o.air):"",
+    vind_lora_malt: o&&o.wind!=null?round1(o.wind):"",
+    vindretn_lora_malt: dir
+  };
+}
 async function logForecast(){
   if(!STATE.now) return;
   const now=STATE.now, w=now.now;
@@ -942,6 +968,7 @@ async function logForecast(){
     vind: round1(w.wind),
     vindretning: now.windDir!=null?`${degToCompass(now.windDir)} (${Math.round(now.windDir)}°)`:"",
     ...wptCols(),
+    ...obsCols(),
     lufttrykk: w.press!=null?Math.round(w.press):"", nedbor: round1(w.precip),
     klarhet: CLAR_LABEL[now.clarity]||"", klekking: HATCH_LABEL[now.state.hatch]||"",
     begrensende: PART_LABELS[now.idx.limiting.key]||""
