@@ -94,6 +94,23 @@ async function loadWeather(){
   STATE.weather=await getJSON(`/api/met?lat=${c.lat}&lon=${c.lon}&altitude=${c.altitude}`);
   return STATE.weather;
 }
+/* lokale MET-værpunkt (Brustugubrue, Leirmo): lufttemp + vind nå */
+async function loadWeatherPoints(){
+  STATE.wpts=[];
+  const pts=STATE.cfg.weatherPoints||[];
+  for(const p of pts){
+    try{
+      const wx=await getJSON(`/api/met?lat=${p.lat}&lon=${p.lon}&altitude=${p.altitude}`);
+      const ts=wx&&wx.properties&&wx.properties.timeseries;
+      if(!ts||!ts.length){ STATE.wpts.push({label:p.label}); continue; }
+      const det=ts[0].data.instant.details||{};
+      const n1=ts[0].data.next_1_hours, n6=ts[0].data.next_6_hours;
+      const sym=(n1&&n1.summary&&n1.summary.symbol_code)||(n6&&n6.summary&&n6.summary.symbol_code);
+      STATE.wpts.push({label:p.label, air:det.air_temperature, wind:det.wind_speed,
+                       windDir:det.wind_from_direction, symbol:sym});
+    }catch(e){ STATE.wpts.push({label:p.label}); }
+  }
+}
 function findParam(seriesList, names, fallbackCode){
   if(!seriesList) return fallbackCode;
   const s=seriesList.find(x=>{
@@ -402,13 +419,20 @@ function renderNowChips(){
   });
   const flowFoot = STATE.cfg.hasKey ? "m³/s · kategori vs 60 dager" : "krever NVE-nøkkel";
 
+  // --- lufttemp + vind, én rad per lokalt værpunkt (Brustugubrue, Leirmo) ---
+  const wpts=STATE.wpts||[];
+  const tempRows2=wpts.length ? wpts.map(p=>({label:p.label,
+      val: p.air!=null?`${fmt1(p.air)}° ${symEmoji(p.symbol)}`:"–"})) : [{label:"–",val:"–"}];
+  const windRows2=wpts.length ? wpts.map(p=>({label:p.label,
+      val: p.wind!=null?`${windArrow(p.windDir,14,'#4fb6a8')} ${fmt1(p.wind)}${p.windDir!=null?" "+degToCompass(p.windDir):""}`:"–"})) : [{label:"–",val:"–"}];
+
   g.innerHTML=[
     chipStations("Vanntemperatur", tempRows, tempFoot),
     chipStations("Vannføring", flowRows, flowFoot),
+    chipStations("Lufttemp", tempRows2, `MET ved fiskesonen · ${fmt0(w.cloud)}% skydekke`),
+    chipStations("Vind", windRows2, "m/s · retning (MET)"),
     chip("Vannklarhet", CLAR_LABEL[now.clarity], "", STATE.cfg.clarityOverride?"manuelt satt":`utledet · ${sts[0].label}`),
-    chip("Lufttemp", fmt1(w.air), "°C", `${symEmoji(w.symbol)} ${fmt0(w.cloud)}% skyer`),
     chip("Nedbør (nå)", fmt1(w.precip), "mm/t", w.hum!=null?`${fmt0(w.hum)}% fukt`:""),
-    chip("Vind", fmt1(w.wind), "m/s", ({calm:"Stille",breeze:"Lett bris",fresh:"Frisk",strong:"Sterk"})[windCat(w.wind)]),
     chip("Lufttrykk", fmt0(w.press), "hPa", `${PRESS_LABEL[pressCat(w.press,w.dPress)]} ${trendArrow(w.dPress,0.8)}`),
     chip("Klekking", HATCH_LABEL[now.state.hatch], "", "nå-vurdering"),
   ].join("");
@@ -554,8 +578,8 @@ async function refresh(){
   setLive("warn","henter data …");
   try{
     await loadConfig();
-    // vær + alle vannstasjoner parallelt
-    await Promise.all([loadWeather(), loadWater()]);
+    // vær + alle vannstasjoner + lokale værpunkt parallelt
+    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints()]);
     buildDays();
     STATE.selected=null;
     renderMeta(); renderHero(); renderForecast(); renderMap();

@@ -76,6 +76,11 @@ DEFAULTS = {
     "lon": 8.8678,
     "altitude": 560,
     "mapFile": "Lesjaelva sone 7.png",   # ligger i public/, vises by default ved deploy
+    # lokale MET-værpunkt for lufttemp + vind (koordinater fra Kartverket)
+    "weatherPoints": [
+        {"label": "Brustugubrue", "lat": 62.0850, "lon": 9.0302, "altitude": 540},
+        {"label": "Leirmo", "lat": 62.1650, "lon": 8.6489, "altitude": 600},
+    ],
 }
 
 # Enkel in-memory cache: { url: (timestamp, status, headers, body_bytes) }
@@ -461,6 +466,7 @@ class Handler(BaseHTTPRequestHandler):
             "clarityOverride": cfg.get("clarityOverride"),
             "tempOverride": cfg.get("tempOverride"),
             "mapFile": cfg.get("mapFile"),
+            "weatherPoints": cfg.get("weatherPoints"),
             "contact": CONTACT,
         })
 
