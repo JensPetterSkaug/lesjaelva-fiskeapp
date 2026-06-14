@@ -165,10 +165,12 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .rp-wt{display:inline-flex;align-items:center;gap:7px}
 .rp-wt b{color:var(--ink);font-family:var(--mono);font-size:11px}
 .rp-wt-bar{display:inline-block;height:7px;border-radius:4px;background:var(--teal-dim);flex:0 0 auto}
-.rp-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rp-tablewrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:492px;
+  border:1px solid var(--line);border-radius:10px}
 .rp-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px}
 .rp-table thead th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--mut);text-align:left;font-weight:600;padding:0 10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  color:var(--mut);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
+  position:sticky;top:0;background:var(--panel);z-index:1}
 .rp-table tbody td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 .rp-table tbody tr:hover{background:rgba(79,182,168,.04)}
 .rp-table .rp-h{font-family:var(--mono);color:var(--teal);font-weight:600;white-space:nowrap}
