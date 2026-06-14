@@ -997,7 +997,9 @@ function leePlace(lon){
   if(lon<8.80) return "Lora–Stavem";
   if(lon<8.90) return "Lesja";
   if(lon<8.96) return "Lesja–Bottheim";
-  return "Bottheim–Brustugubrue";
+  if(lon<9.04) return "Bottheim–Brustugubrue";
+  if(lon<9.09) return "Nedre fluesone (Joramo)";
+  return "Li / Dovre-grensa";
 }
 function leeLabel(s){
   if(s>=10) return ["god le","#4fb6a8"];
