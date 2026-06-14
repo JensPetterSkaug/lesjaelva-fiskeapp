@@ -35,6 +35,12 @@ Nøkkelen lagres lokalt i `config.json` og sendes aldri ut til nettleseren igjen
 - **Klekking & flueråd**: hvilke insekter som er aktuelle (aurivillii rundt St. Hans, Baetis i regn, vårfluer
   utover sommeren …) og konkrete flueforslag — fra researchnotatet om sone 7.
 - **14-dagers prognose**: én indeks per døgn (dag 1–9 fra MET, dag 10–14 klimatologi). Klikk en dag for detaljer.
+- **Dagsrapport – time for time**: for valgt dag rangeres alle elvepunktene fra Le-kartet time for time, og du får
+  **beste fiskeplass** hver time + et **flueråd (mønster + krokstørrelse)** tilpasset lyset. Modellen veier åtte
+  påvirkninger per time og punkt: lysstyrke (beregnet solhøyde × skydekke), sol/skygge på selve plassen
+  (terrengskygge når sola står bak horisonten), le for vinden, vindstyrke, trykkfall (6 t fram), vanntemp,
+  klekking og vannklarhet. Sammendraget peker ut dagens beste vindu og den plassen som oftest topper lista.
+  Krever MET-timesprognose (de nærmeste ~2–3 døgnene).
 
 ## Fiskelogg → Excel
 
@@ -55,6 +61,12 @@ vann. Se `public/scoring.js` — formelen er identisk med din `fiskeindeks_1.htm
 **Forbehold:** Vannklarhet og vannføringskategori *utledes* fra vannføringsnivå + nedbør (stasjonen har ingen
 turbiditetssensor) — kan overstyres i innstillinger. Vanntemperatur for kommende dager *modelleres* fra
 lufttemperatur (demping + smeltevannsgulv), ikke målt. Dette er angler-heuristikk, ikke en validert biologisk ligning.
+
+**Time-for-time-rapporten** bruker en egen vekting (lysstyrke 0,20 · le 0,16 · trykk 0,13 · sol/skygge 0,13 ·
+vindstyrke 0,12 · vanntemp 0,12 · klekking 0,09 · klarhet 0,05). Solhøyde og -asimut beregnes astronomisk
+(NOAA-lavpresisjon) per time, og terrengskygge/le avledes av høydehorisonten i hvert elvepunkt (`terrain.json`).
+Vindretning og -styrke gjelder hele sona (ett MET-punkt), så finskala-forskjeller mellom punktene kommer kun fra
+terrenget — modell på dalskala, ikke en standplass-garanti.
 
 ## Deployment
 
