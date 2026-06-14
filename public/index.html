@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="head-left">
+      <p class="eyebrow">Elvefiske · live prognose · NVE Sildre + MET</p>
+      <h1>Lesjaelva — øvre Gudbrandsdalslågen, sone 7</h1>
+      <p class="sub" id="stationSub">Stasjon 2.346.0 Lesjaverk · laster …</p>
+    </div>
+    <div class="head-right">
+      <span class="livedot" id="liveDot" title="Datastatus"></span>
+      <span class="livetxt" id="liveTxt">kobler til …</span>
+      <button class="iconbtn" id="refreshBtn" title="Oppdater nå">↻</button>
+      <button class="iconbtn" id="settingsBtn" title="Innstillinger">⚙</button>
+    </div>
+  </header>
+
+  <!-- NÅ-STATUS -->
+  <section class="hero">
+    <div class="gauge-card">
+      <div class="gauge">
+        <div><span class="gnum" id="score">–</span><span class="gmax"> /100</span></div>
+        <div class="verdict" id="verdict">–</div>
+        <div class="track"><div class="fill" id="fill" style="width:0%"></div></div>
+      </div>
+      <div class="gauge-meta">
+        <div class="gauge-when" id="gaugeWhen">Nå</div>
+        <div class="limiting" id="limiting"></div>
+      </div>
+    </div>
+
+    <div class="now-grid" id="nowGrid">
+      <!-- condition-chips fylles av JS -->
+    </div>
+  </section>
+
+  <div class="gate" id="gate"></div>
+
+  <!-- TO HOVEDSPALTER -->
+  <div class="cols">
+    <section class="panel breakdown">
+      <h3>Bidrag til indeksen <span class="muted" id="bdWhen"></span></h3>
+      <div id="bars"></div>
+    </section>
+
+    <section class="panel hatch">
+      <h3>Klekking &amp; flueråd <span class="muted" id="hatchWhen"></span></h3>
+      <div id="hatchBox" class="hatchbox">–</div>
+    </section>
+  </div>
+
+  <!-- 14-DAGERS PROGNOSE -->
+  <section class="panel forecast">
+    <div class="fc-head">
+      <h3>14-dagers prognose</h3>
+      <p class="muted fc-note">Klikk en dag for å se den i måleren over. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
+    </div>
+    <div class="fc-strip" id="fcStrip"><div class="fc-loading">Laster prognose …</div></div>
+    <div class="fc-spark" id="fcSpark"></div>
+  </section>
+
+  <!-- VINDKART -->
+  <section class="panel mapsec">
+    <div class="fc-head">
+      <h3>Vindkart — fiskesone <span class="muted" id="mapWhen"></span></h3>
+      <p class="muted fc-note">Kartet er nord opp. Pilen viser <b>veien vinden blåser</b> for valgt dag — bruk den til å finne le-strekk. Klikk en dag i prognosen over.</p>
+    </div>
+    <div class="mapwrap" id="mapWrap">
+      <img id="mapImg" class="mapimg" alt="Lesjaelva fiskesone, sone 7" style="display:none">
+      <div class="mapphold" id="mapPhold">
+        <div class="mapphold-inner">
+          <div class="mapphold-ico">🗺️</div>
+          <p>Last opp kartbildet av fiskesonen (det du limte inn i chatten).<br>Det lagres lokalt og blir liggende i prognosearket.</p>
+          <button class="btn" id="mapUploadBtn2">Velg kartbilde</button>
+        </div>
+      </div>
+      <svg id="windRose" class="windrose" viewBox="0 0 140 140" style="display:none"></svg>
+      <div class="mapcap" id="mapCap" style="display:none"></div>
+    </div>
+    <input type="file" id="mapFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
+    <div class="maptools"><button class="btn ghost sm" id="mapUploadBtn">Last opp / bytt kartbilde</button></div>
+  </section>
+
+  <!-- DOMBÅS VANNSTAND/VANNFØRING + PROGNOSE -->
+  <section class="panel chartsec">
+    <div class="fc-head">
+      <h3>Dombås — vannstand &amp; vannføring <span class="muted">· 14 dager + 7-dagers vannstandsprognose</span></h3>
+      <p class="muted fc-note">Heltrukket = målt (NVE 2.303.0). Stiplet = prognosert vannstand basert på 30-dagers trend (resesjon) + nedbørsprognose. Skyggebånd = usikkerhet.</p>
+    </div>
+    <div class="chartlegend" id="dombasLegend"></div>
+    <div class="chartbox" id="dombasChart"></div>
+    <div class="chartcap" id="dombasCap"></div>
+  </section>
+
+  <!-- FISKELOGG -->
+  <section class="panel logsec">
+    <div class="fc-head">
+      <h3>Min fiskelogg <span class="muted" id="logCount"></span></h3>
+      <p class="muted fc-note">Prognosen lagres automatisk én rad per dag. Her rapporterer du inn det du faktisk så ved elva — alt havner i samme Excel-ark (to faner: Prognose + Observasjoner), koblet på dato.</p>
+    </div>
+
+    <div class="obsform" id="obsForm">
+      <label class="of">Dato<input type="date" id="ob_dato"></label>
+      <label class="of">Strekning
+        <select id="ob_strekning">
+          <option>Øvre fluesone</option>
+          <option>Nedre fluesone</option>
+          <option>Lågen sone 7 (utenfor fluesone)</option>
+          <option>Annet</option>
+        </select>
+      </label>
+      <label class="of">Timer fisket<input type="number" step="0.5" min="0" id="ob_timer" placeholder="t"></label>
+      <label class="of">Antall fisk<input type="number" min="0" id="ob_antall" placeholder="stk"></label>
+      <label class="of">Største (cm)<input type="number" min="0" id="ob_storste" placeholder="cm"></label>
+      <label class="of">Art
+        <select id="ob_art"><option>Ørret</option><option>Harr</option><option>Begge</option><option>Ingen</option></select>
+      </label>
+      <label class="of wide">Flue som funket<input type="text" id="ob_flue" placeholder="f.eks. Aurivillii-klekker #14"></label>
+      <label class="of wide">Observert klekking<input type="text" id="ob_klekking" placeholder="art, tetthet, klokkeslett"></label>
+      <label class="of">Egen vanntemp (°C)<input type="number" step="0.1" id="ob_vanntemp" placeholder="°C"></label>
+      <label class="of">Observert sikt
+        <select id="ob_sikt"><option value="">—</option><option>Krystallklart</option><option>Lett farget</option><option>Moderat grumset</option><option>Sjokoladebrun</option></select>
+      </label>
+      <label class="of">Observert vind<input type="text" id="ob_vind" placeholder="f.eks. SV frisk"></label>
+      <label class="of full">Notat<textarea id="ob_notat" rows="2" placeholder="standplasser, atferd, hva som ikke funket …"></textarea></label>
+    </div>
+    <div class="logtools">
+      <span class="logmsg" id="logMsg"></span>
+      <a class="btn ghost sm" id="dlExcel" href="/api/export.xlsx">⬇ Last ned Excel (.xlsx)</a>
+      <button class="btn" id="saveObs">Lagre observasjon</button>
+    </div>
+
+    <div class="obslist" id="obsList"></div>
+  </section>
+
+  <footer>
+    <div id="sources">
+      <b>Kilder (live):</b>
+      <a href="https://sildre.nve.no/station/2.346.0" target="_blank" rel="noopener">NVE Sildre / HydAPI</a> for vanntemperatur, vannføring &amp; vannstand ·
+      <a href="https://api.met.no/" target="_blank" rel="noopener">MET Norway</a> for værprognose.
+      <span id="updated"></span>
+    </div>
+    <div class="disclaimer">
+      <b>Modell:</b> Fiskeindeksen vekter åtte faktorer (vanntemp 0,24 · lys/sky 0,18 · trykk 0,16 · vannføring 0,15 ·
+      klarhet 0,10 · klekking 0,09 · vind 0,05 · stabilitet 0,03), med harde portvoktere for ≥18–20 °C og flom/grumset vann.
+      Vannklarhet og vannføringskategori utledes fra vannføringsnivå + nedbør (ingen turbiditetssensor på stasjonen) — overstyr i innstillinger ved behov.
+      Vanntemperatur for kommende dager modelleres fra lufttemperatur med demping og smeltevannsgulv. Slutt å fiske ørret når vannet passerer 20 °C.
+    </div>
+  </footer>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>Innstillinger</h2>
+    <label class="lbl">NVE API-nøkkel
+      <span class="hint">gratis på <a href="https://hydapi.nve.no/Users" target="_blank" rel="noopener">hydapi.nve.no/Users</a> — lagres lokalt i config.json, sendes aldri til nettleseren igjen</span>
+    </label>
+    <input type="password" id="keyInput" placeholder="lim inn nøkkel her">
+    <div class="row3">
+      <label class="lbl sm">Breddegrad<input type="number" step="0.0001" id="latInput"></label>
+      <label class="lbl sm">Lengdegrad<input type="number" step="0.0001" id="lonInput"></label>
+      <label class="lbl sm">Høyde (moh)<input type="number" step="1" id="altInput"></label>
+    </div>
+    <label class="lbl">Overstyr vannklarhet (valgfritt)
+      <select id="clarityOverride">
+        <option value="">Automatisk (utledet fra vannføring)</option>
+        <option value="gin">Krystallklart</option>
+        <option value="tinge">Lett farget</option>
+        <option value="stained">Moderat grumset</option>
+        <option value="muddy">Sjokoladebrun</option>
+      </select>
+    </label>
+    <label class="lbl">Manuell vanntemperatur nå (°C, valgfritt)
+      <span class="hint">brukes hvis stasjonen ikke måler vanntemp — la stå tom for modellestimat</span>
+      <input type="number" step="0.5" id="tempOverride" placeholder="f.eks. 8.5">
+    </label>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modalCancel">Avbryt</button>
+      <button class="btn" id="modalSave">Lagre &amp; oppdater</button>
+    </div>
+    <p class="modal-status" id="modalStatus"></p>
+  </div>
+</div>
+
+<script src="/scoring.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
