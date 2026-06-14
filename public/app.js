@@ -518,7 +518,7 @@ function renderSpark(){
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;
 }
 
-function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderMap(); }
+function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderMap(); renderLeeMap(); }
 
 /* ---------- vindkart ---------- */
 function renderMap(){
@@ -605,6 +605,7 @@ async function refresh(){
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
+    loadLeeTerrain().then(renderLeeMap).catch(()=>{});
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
     else if(!okWater) setLive("warn","vær OK · ingen vann-serie funnet");
@@ -922,6 +923,72 @@ function renderPressureChart(){
   cap.innerHTML=`Lufttrykk nå <b>${Math.round(nowV)} hPa</b>, <b>${pressTrendWord(d24back)}</b> siste døgn. `+
     `Neste 24 t: ${pressTrendWord(d24)}; videre ${pressTrendWord(d72)}. `+frontTxt+
     `<span class="muted">Gir nå «${PRESS_LABEL[cat]}» → delskår ${sub.toFixed(2)} (vekt 0,16). Kilder: målt Frost (Dovre-Lannem) + MET-prognose.</span>`;
+}
+
+/* ============================================================
+   LE-KART: interaktivt Leaflet-kart + terrengbasert vindskjerming
+   ============================================================ */
+let LEEMAP=null, LEELAYER=null;
+async function loadLeeTerrain(){
+  if(STATE.terrain) return;
+  try{ STATE.terrain=await getJSON("/terrain.json"); }catch(e){ STATE.terrain=null; }
+}
+/* vindkilde for kartet = samme som måleren (valgt dag eller nå) */
+function mapWindDir(){
+  const sel=STATE.selected;
+  if(sel==null && STATE.now) return STATE.now.windDir;
+  if(STATE.days.length){ const d=STATE.days[sel==null?0:sel]; return d.md.windDir; }
+  return null;
+}
+/* terrenghorisont oppstrøms vinden (±30°) = skjermingsgrad i grader */
+function shelterDeg(point, windFrom){
+  if(windFrom==null) return null;
+  let best=0;
+  for(const k in point.horizon){
+    const dd=parseInt(k,10), diff=Math.abs(((dd-windFrom+180)%360)-180);
+    if(diff<=30) best=Math.max(best, point.horizon[k]);
+  }
+  return best;
+}
+function renderLeeMap(){
+  const T=STATE.terrain, host=$("leeMap"), cap=$("leeCap"), leg=$("leeLegend");
+  if(typeof L==="undefined"){ if(cap) cap.textContent="Kartbiblioteket (Leaflet) lastet ikke."; return; }
+  if(!T||!T.length){ if(cap) cap.textContent="Ingen terrengdata."; return; }
+  if(!LEEMAP){
+    LEEMAP=L.map(host,{scrollWheelZoom:false});
+    L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
+      {maxZoom:17, attribution:"© Kartverket"}).addTo(LEEMAP);
+    const lats=T.map(p=>p.lat), lons=T.map(p=>p.lon);
+    LEEMAP.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[25,25]});
+    L.polyline(T.map(p=>[p.lat,p.lon]),{color:"#4fb6a8",weight:2,opacity:0.65}).addTo(LEEMAP);
+    LEELAYER=L.layerGroup().addTo(LEEMAP);
+  }
+  const wind=mapWindDir();
+  LEELAYER.clearLayers();
+  let nLe=0;
+  T.forEach(p=>{
+    const s=shelterDeg(p,wind);
+    let color="#7e9a98", r=5, label="ukjent";
+    if(s!=null){
+      if(s>=10){ color="#4fb6a8"; r=11; label="god le"; nLe++; }
+      else if(s>=5){ color="#6fc27a"; r=8; label="noe le"; nLe++; }
+      else { color="#d8624a"; r=5; label="vindutsatt"; }
+    }
+    L.circleMarker([p.lat,p.lon],{radius:r,color:color,fillColor:color,fillOpacity:.55,weight:1.5})
+      .bindPopup(`<b>${label}</b><br>terrenghorisont oppstrøms vinden: ${s!=null?Math.round(s)+"°":"–"}<br>${Math.round(p.elev)} moh`)
+      .addTo(LEELAYER);
+  });
+  if(leg) leg.innerHTML=`
+    <span class="lg"><span class="sw" style="border:none;width:12px;height:12px;border-radius:50%;background:#4fb6a8"></span>God le (≥10°)</span>
+    <span class="lg"><span class="sw" style="border:none;width:12px;height:12px;border-radius:50%;background:#6fc27a"></span>Noe le (5–10°)</span>
+    <span class="lg"><span class="sw" style="border:none;width:12px;height:12px;border-radius:50%;background:#d8624a"></span>Vindutsatt</span>`;
+  if(cap){
+    const lbl=(STATE.selected==null?"Nå":dayLabel(STATE.days[STATE.selected].date));
+    cap.innerHTML = wind==null
+      ? `<b>${lbl}:</b> vindretning ikke tilgjengelig (klimatologi) — kan ikke beregne le.`
+      : `<b>${lbl}:</b> vind fra <b>${degToCompass(wind)}</b> (${Math.round(wind)}°). ${nLe} av ${T.length} elvepunkt ligger i le der terrenget stiger oppstrøms vinden. <span class="muted">Skjerming = hvor bratt terrenget reiser seg i vindretningen (terrenghorisont). Modell på dalskala — finbankede svinger fanges ikke. Kilde: Kartverket høydedata.</span>`;
+  }
+  setTimeout(()=>{ if(LEEMAP) LEEMAP.invalidateSize(); },120);
 }
 
 /* ---------- fiskelogg ---------- */

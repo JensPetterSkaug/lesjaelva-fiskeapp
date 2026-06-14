@@ -157,6 +157,11 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .chartcap{font-size:12.5px;color:var(--mut);margin-top:10px;line-height:1.6}
 .chartcap b{color:var(--ink)}
 
+/* le-kart (leaflet) */
+.leemap{width:100%;height:420px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.leemap .leaflet-popup-content-wrapper,.leemap .leaflet-popup-tip{background:var(--panel);color:var(--ink)}
+.leaflet-container{background:#0f2126;font-family:var(--sans)}
+
 /* fiskelogg */
 .logsec{margin-bottom:14px}
 .obsform{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}

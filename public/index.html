@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -87,6 +89,17 @@
     </div>
     <input type="file" id="mapFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
     <div class="maptools"><button class="btn ghost sm" id="mapUploadBtn">Last opp / bytt kartbilde</button></div>
+  </section>
+
+  <!-- LE-KART (interaktivt, terreng + vind) -->
+  <section class="panel mapsec">
+    <div class="fc-head">
+      <h3>Le-kart <span class="muted">· terreng + vind</span></h3>
+      <p class="muted fc-note">Interaktivt kart (Kartverket topo). Grønne punkt = sannsynlig <b>le</b> for valgt dags vind — terrenget stiger oppstrøms vinden og skjermer. Røde = vindutsatt. Klikk en dag i prognosen for å oppdatere.</p>
+    </div>
+    <div class="chartlegend" id="leeLegend"></div>
+    <div id="leeMap" class="leemap"></div>
+    <div class="chartcap" id="leeCap"></div>
   </section>
 
   <!-- DOMBÅS VANNSTAND/VANNFØRING + PROGNOSE -->
