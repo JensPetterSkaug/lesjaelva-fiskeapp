@@ -1028,7 +1028,21 @@ function buildDayReport(dayIndex){
                sunEl:sp.elevation, sunAz:sp.azimuth, bright};
     const scored=T.map(p=>({p, r:spotHourScore(env,p)})).sort((a,b)=>b.r.score-a.r.score);
     const fly=hourFlyTip(h.date, wt, h.cloud, h.precip, sp.elevation, bright);
-    return {h, sp, bright, wt, pcat, env, best:scored[0], top3:scored.slice(0,3), fly};
+    return {h, sp, bright, wt, pcat, env, cand:scored, top3:scored.slice(0,3), fly};
+  });
+  // variasjonsregel: samme plass (visningsnavn) maks 4 timer på rad -> 5. time bytter til nest beste med ANNET navn
+  const spotKey=p=>(p.navn||leePlace(p.lon));
+  let streakKey=null, streakLen=0;
+  rows.forEach(row=>{
+    const ranked=row.cand;
+    let chosen=ranked[0], forced=false;
+    if(streakKey===spotKey(ranked[0].p) && streakLen>=4){
+      const alt=ranked.find(x=>spotKey(x.p)!==streakKey);
+      if(alt){ chosen=alt; forced=true; }
+    }
+    const ck=spotKey(chosen.p);
+    if(ck===streakKey) streakLen++; else { streakKey=ck; streakLen=1; }
+    row.best=chosen; row.forced=forced;
   });
   return {day, rows, hasTerrain:true, lat, lon};
 }
@@ -1088,7 +1102,7 @@ function renderDailyReport(){
     return `<tr>
       <td class="rp-h">${String(r.h.hour).padStart(2,"0")}</td>
       <td class="rp-sc" style="color:${vc}"><b>${r.best.r.score}</b><span class="rp-vd">${vt}</span></td>
-      <td class="rp-pl"><a href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">${name}</a>${shadeMark}</td>
+      <td class="rp-pl"><a href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">${name}</a>${shadeMark}${r.forced?` <span class="rp-swap">variasjon</span>`:""}</td>
       <td class="rp-li">${lemo} ${lt}<span class="rp-sub">${Math.round(r.sp.elevation)}° sol · ${fmt0(r.h.cloud)}% sky</span></td>
       <td class="rp-wi">${windArrow(wd,13,sc)} ${windTxt}<span class="rp-sub" style="color:${sc}">${stag}${r.best.r.shelter!=null?` ${Math.round(r.best.r.shelter)}°`:""}</span></td>
       <td class="rp-pr">${pArrow} ${PRESS_LABEL[r.pcat]}</td>

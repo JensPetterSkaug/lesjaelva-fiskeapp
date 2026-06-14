@@ -182,6 +182,8 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .rp-table .rp-pl a:hover{color:var(--teal)}
 .rp-shade{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--teal);border:1px solid var(--teal-dim);border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.rp-swap{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--amber);border:1px solid rgba(224,147,90,.5);border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle}
 .rp-sub{display:block;color:var(--mut2);font-size:11px;margin-top:2px}
 .rp-table .rp-li,.rp-table .rp-wi{white-space:nowrap}
 .rp-table .rp-fl{min-width:200px}
