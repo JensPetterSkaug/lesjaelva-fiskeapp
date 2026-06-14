@@ -159,6 +159,33 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .leerow .lr-link{flex:0 0 auto;font-size:12.5px;white-space:nowrap}
 .leelist .empty{color:var(--mut2);font-size:12.5px;padding:8px 0}
 
+/* dagsrapport – time for time */
+.reportsec{margin-bottom:14px}
+.rp-weights{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px;font-size:11.5px;color:var(--mut)}
+.rp-wt{display:inline-flex;align-items:center;gap:7px}
+.rp-wt b{color:var(--ink);font-family:var(--mono);font-size:11px}
+.rp-wt-bar{display:inline-block;height:7px;border-radius:4px;background:var(--teal-dim);flex:0 0 auto}
+.rp-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rp-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px}
+.rp-table thead th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mut);text-align:left;font-weight:600;padding:0 10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rp-table tbody td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.rp-table tbody tr:hover{background:rgba(79,182,168,.04)}
+.rp-table .rp-h{font-family:var(--mono);color:var(--teal);font-weight:600;white-space:nowrap}
+.rp-table .rp-sc{font-family:var(--mono);white-space:nowrap}
+.rp-table .rp-sc b{font-size:16px}
+.rp-table .rp-vd{display:block;font-size:10px;font-family:var(--sans)}
+.rp-table .rp-pl{color:var(--ink);min-width:130px}
+.rp-table .rp-pl a{color:var(--ink)}
+.rp-table .rp-pl a:hover{color:var(--teal)}
+.rp-shade{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--teal);border:1px solid var(--teal-dim);border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.rp-sub{display:block;color:var(--mut2);font-size:11px;margin-top:2px}
+.rp-table .rp-li,.rp-table .rp-wi{white-space:nowrap}
+.rp-table .rp-fl{min-width:200px}
+.rp-table .rp-fl b{color:var(--ink)}
+.reportsec .empty{color:var(--mut2);font-size:13px;padding:14px 0}
+
 /* fiskelogg */
 .logsec{margin-bottom:14px}
 .obsform{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}

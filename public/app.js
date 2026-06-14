@@ -518,7 +518,7 @@ function renderSpark(){
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;
 }
 
-function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderLeeMap(); renderLeeList(); }
+function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderLeeMap(); renderLeeList(); renderDailyReport(); }
 
 /* ---------- station-sub + footer ---------- */
 function renderMeta(){
@@ -550,11 +550,11 @@ async function refresh(){
     await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
     buildDays();
     STATE.selected=null;
-    renderMeta(); renderHero(); renderForecast();
+    renderMeta(); renderHero(); renderForecast(); renderDailyReport();
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
-    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); }).catch(()=>{});
+    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); }).catch(()=>{});
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
     else if(!okWater) setLive("warn","vær OK · ingen vann-serie funnet");
@@ -977,6 +977,145 @@ function renderLeeList(){
         <a class="lr-link" href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">Veibeskrivelse →</a>
       </div>`;
     }).join("");
+}
+
+/* ============================================================
+   DAGSRAPPORT – time for time, beste fiskeplass per time
+   ============================================================ */
+/* hent MET-timesoppløsning for valgt dato (kun nær framtid har time-data) */
+function hoursForDay(dayIndex){
+  const ts=STATE.weather&&STATE.weather.properties&&STATE.weather.properties.timeseries;
+  const day=STATE.days[dayIndex];
+  if(!ts||!ts.length||!day) return [];
+  const rows=[];
+  for(let i=0;i<ts.length;i++){
+    const e=ts[i], d=new Date(e.time);
+    if(osloDateKey(d)!==day.key) continue;
+    const det=e.data.instant.details||{};
+    const n1=e.data.next_1_hours, n6=e.data.next_6_hours;
+    let precip=0;
+    if(n1&&n1.details&&n1.details.precipitation_amount!=null) precip=n1.details.precipitation_amount;
+    else if(n6&&n6.details&&n6.details.precipitation_amount!=null) precip=n6.details.precipitation_amount/6;
+    // trykkendring ~6 t fram (negativ = fallende = trykkfall)
+    const pNow=det.air_pressure_at_sea_level; let pL=pNow; const t0=d.getTime();
+    for(let j=i+1;j<ts.length;j++){ const pp=ts[j].data.instant.details.air_pressure_at_sea_level;
+      if(pp!=null && new Date(ts[j].time).getTime()-t0>=6*36e5){ pL=pp; break; } }
+    rows.push({date:d, hour:osloHour(d), air:det.air_temperature, cloud:det.cloud_area_fraction,
+      wind:det.wind_speed, windFrom:det.wind_from_direction, press:pNow, dP:(pL-pNow), precip,
+      hum:det.relative_humidity,
+      sym:(n1&&n1.summary&&n1.summary.symbol_code)||(n6&&n6.summary&&n6.summary.symbol_code)});
+  }
+  return rows;
+}
+/* bygg full time-for-time-rapport: per time scores alle elvepunkt -> beste plass + flueråd */
+function buildDayReport(dayIndex){
+  const day=STATE.days[dayIndex]; if(!day) return null;
+  const T=STATE.terrain||[];
+  const hrs=hoursForDay(dayIndex);
+  const lat=STATE.cfg.lat, lon=STATE.cfg.lon;
+  if(!hrs.length || !T.length) return {day, rows:[], hasTerrain:T.length>0};
+  const airs=hrs.map(h=>h.air).filter(v=>v!=null);
+  const airMax=airs.length?Math.max(...airs):0, airMin=airs.length?Math.min(...airs):0;
+  const amp=Math.min(1.2, 0.14*(airMax-airMin));      // beskjeden døgnvariasjon i vanntemp
+  const rows=hrs.map(h=>{
+    const sp=solarPosition(h.date, lat, lon);
+    const bright=sunBrightness(sp.elevation, h.cloud);
+    const wt=day.wt + amp*Math.sin((h.hour-9)/24*2*Math.PI);  // topp ~kl 15
+    const pcat=pressCat(h.press, h.dP);
+    const hcat=hatchState(h.date, wt, h.cloud, h.precip).cat;
+    const env={temp:wt, cloud:h.cloud, wind:h.wind, windFrom:h.windFrom, press:pcat,
+               flow:day.fcat, clarity:day.clarity, hatch:hcat,
+               sunEl:sp.elevation, sunAz:sp.azimuth, bright};
+    const scored=T.map(p=>({p, r:spotHourScore(env,p)})).sort((a,b)=>b.r.score-a.r.score);
+    const fly=hourFlyTip(h.date, wt, h.cloud, h.precip, sp.elevation, bright);
+    return {h, sp, bright, wt, pcat, env, best:scored[0], top3:scored.slice(0,3), fly};
+  });
+  return {day, rows, hasTerrain:true, lat, lon};
+}
+
+const LIGHT_LABEL=r=>{
+  if(r.sp.elevation<=-6) return ["Mørkt","🌑"];
+  if(r.sp.elevation<0)   return ["Tussmørke","🌗"];
+  if(r.sp.elevation<6)   return ["Lavt / gyllent","🌅"];
+  if(r.h.cloud>=70)      return ["Overskyet","☁️"];
+  if(r.h.cloud>=30)      return ["Halvskyet","⛅"];
+  return ["Sol / klart","☀️"];
+};
+function shelterTag(deg){
+  if(deg==null) return ["–","var(--mut2)"];
+  if(deg>=10) return ["god le","#4fb6a8"];
+  if(deg>=5)  return ["noe le","#6fc27a"];
+  if(deg>=2)  return ["svak le","#c9b85a"];
+  return ["utsatt","#d8624a"];
+}
+function renderDailyReport(){
+  const sel=STATE.selected, dayIndex=(sel==null?0:sel);
+  const host=$("reportBody"), capEl=$("reportCap"), whenEl=$("reportWhen");
+  if(!host) return;
+  const day=STATE.days[dayIndex];
+  if(whenEl) whenEl.textContent = day ? "· "+dayLabel(day.date)+(sel==null?" (i dag)":"") : "";
+  const rep=buildDayReport(dayIndex);
+  if(!rep){ host.innerHTML=`<div class="empty">Venter på data …</div>`; if(capEl) capEl.innerHTML=""; return; }
+  if(!rep.hasTerrain){ host.innerHTML=`<div class="empty">Laster elvepunkt …</div>`; return; }
+  if(!rep.rows.length){
+    host.innerHTML=`<div class="empty">Time-for-time-rapport krever MET-timesprognose — tilgjengelig for de nærmeste ~2–3 døgnene. Velg en nærmere dag i prognosen over.</div>`;
+    if(capEl) capEl.innerHTML=""; return;
+  }
+
+  // sammendrag: beste vindu + beste plass totalt
+  const rows=rep.rows;
+  const peak=Math.max(...rows.map(r=>r.best.r.score));
+  const peakRows=rows.filter(r=>r.best.r.score>=peak-5);
+  const hs=peakRows.map(r=>r.h.hour);
+  const window = hs.length ? `kl ${String(Math.min(...hs)).padStart(2,"0")}–${String(Math.max(...hs)+1).padStart(2,"0")}` : "–";
+  const placeCount={};
+  rows.forEach(r=>{ const n=r.best.p.navn||leePlace(r.best.p.lon); placeCount[n]=(placeCount[n]||0)+1; });
+  const topPlace=Object.entries(placeCount).sort((a,b)=>b[1]-a[1])[0];
+  const peakRow=rows.find(r=>r.best.r.score===peak);
+  const [pvt,pvc]=verdict(peak);
+
+  // tabellrader
+  const body=rows.map(r=>{
+    const [vt,vc]=verdict(r.best.r.score);
+    const [lt,lemo]=LIGHT_LABEL(r);
+    const name=r.best.p.navn||leePlace(r.best.p.lon);
+    const [stag,sc]=shelterTag(r.best.r.shelter);
+    const wd=r.h.windFrom;
+    const windTxt=`${fmt1(r.h.wind)}${wd!=null?" "+degToCompass(wd):""}`;
+    const dst=`${r.best.p.lat.toFixed(5)},${r.best.p.lon.toFixed(5)}`;
+    const shadeMark=r.best.r.shaded?` <span class="rp-shade">skygge</span>`:"";
+    const pArrow=trendArrow(r.h.dP,0.8);  // dP = p(+6t)−nå; negativ = fallende trykk -> ↓
+    return `<tr>
+      <td class="rp-h">${String(r.h.hour).padStart(2,"0")}</td>
+      <td class="rp-sc" style="color:${vc}"><b>${r.best.r.score}</b><span class="rp-vd">${vt}</span></td>
+      <td class="rp-pl"><a href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">${name}</a>${shadeMark}</td>
+      <td class="rp-li">${lemo} ${lt}<span class="rp-sub">${Math.round(r.sp.elevation)}° sol · ${fmt0(r.h.cloud)}% sky</span></td>
+      <td class="rp-wi">${windArrow(wd,13,sc)} ${windTxt}<span class="rp-sub" style="color:${sc}">${stag}${r.best.r.shelter!=null?` ${Math.round(r.best.r.shelter)}°`:""}</span></td>
+      <td class="rp-pr">${pArrow} ${PRESS_LABEL[r.pcat]}</td>
+      <td class="rp-fl"><b>${r.fly.fly}</b> ${r.fly.size}<span class="rp-sub">${r.fly.tip}</span></td>
+    </tr>`;
+  }).join("");
+
+  host.innerHTML=`<div class="rp-tablewrap"><table class="rp-table">
+    <thead><tr><th>Kl</th><th>Indeks</th><th>Beste plass</th><th>Sol / lys</th><th>Vind &amp; le</th><th>Trykk</th><th>Flue (krok)</th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+
+  if(capEl){
+    const dayGate = peakRow ? peakRow.best.r.g : 1;
+    const gateTxt = (rep.rows.some(r=>r.best.r.g<1))
+      ? ` <span class="muted">Merk: portvokter aktiv deler av dagen (varmt vann/flom) — indeksen er nedjustert da.</span>` : "";
+    capEl.innerHTML=`Beste vindu i dag: <b style="color:${pvc}">${window}</b> (topp ${peak} – ${pvt}), `+
+      `sterkest rundt kl ${String(peakRow.h.hour).padStart(2,"0")} ved <b>${peakRow.best.p.navn||leePlace(peakRow.best.p.lon)}</b>. `+
+      `Oftest beste plass gjennom dagen: <b>${topPlace[0]}</b> (${topPlace[1]} av ${rows.length} timer). `+
+      `Modellen veier sol/lys, terrengskygge, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet for hvert av ${(STATE.terrain||[]).length} elvepunkt, time for time.`+gateTxt;
+  }
+  renderReportWeights();
+}
+/* vis vektingen (WH) som en liten forklarende liste */
+function renderReportWeights(){
+  const el=$("reportWeights"); if(!el) return;
+  const keys=Object.keys(WH).sort((a,b)=>WH[b]-WH[a]);
+  el.innerHTML=keys.map(k=>`<span class="rp-wt"><span class="rp-wt-bar" style="width:${Math.round(WH[k]*220)}px"></span>${WH_LABELS[k]} <b>${(WH[k]*100).toFixed(0)}%</b></span>`).join("");
 }
 
 /* ---------- fiskelogg ---------- */
