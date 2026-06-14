@@ -1,0 +1,17 @@
+# Render Blueprint – ett-klikks deploy av Lesjaelva fiskedashboard.
+# Bruk: gå til https://render.com → New → Blueprint → koble GitHub-repoet.
+# Render setter $PORT selv; du fyller inn NVE_API_KEY når du blir spurt.
+services:
+  - type: web
+    name: lesjaelva-fiskeapp
+    runtime: python
+    plan: free
+    buildCommand: "echo 'ingen avhengigheter – kun Python stdlib'"
+    startCommand: "python3 server.py"
+    envVars:
+      - key: HOST
+        value: "0.0.0.0"
+      - key: NVE_API_KEY
+        sync: false          # fylles inn manuelt i Render (eksponeres aldri i repoet)
+      - key: MET_CONTACT
+        value: "jens-petter.skaug@knowit.no"

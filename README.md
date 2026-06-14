@@ -62,13 +62,24 @@ lufttemperatur (demping + smeltevannsgulv), ikke målt. Dette er angler-heuristi
 > `server.py`. Uten backend feiler alle `/api/*`-kall: NVE-proxyen (CORS + API-nøkkel), MET-proxyen,
 > sesongnormalene, fiskeloggen og Excel-eksporten. En Pages-versjon ville bare vist et tomt skall.
 
-For en **live** versjon trengs en vert som kjører Python:
+For en **live, delbar** versjon (URL du kan sende til venner) trengs en vert som kjører Python.
+Repoet er klargjort med `Procfile` og `render.yaml`.
 
-- **Render / Railway / Fly.io / PythonAnywhere** — pek på `python3 server.py`, sett `PORT` og
-  `NVE_API_KEY` som miljøvariabel (ikke commit nøkkelen). Et `Procfile` (`web: python3 server.py`) holder.
-- **Egen maskin / VPS** — kjør `python3 server.py` bak en reverse proxy.
+### Render (anbefalt, gratis, gir delbar URL)
+1. Push repoet til GitHub (se under).
+2. Gå til [render.com](https://render.com) → **New → Blueprint** → koble GitHub-repoet (Render leser `render.yaml`).
+3. Når den spør: lim inn **`NVE_API_KEY`** (fra hydapi.nve.no/Users). `HOST=0.0.0.0` og `PORT` settes automatisk.
+4. Du får en URL som `https://lesjaelva-fiskeapp.onrender.com` — det er lenken du deler.
 
-Enkles og trygt er å kjøre den **lokalt** (se «Kom i gang»). Repoet er for versjonskontroll og deling av koden.
+Tilsvarende fungerer **Railway** / **Fly.io** (`Procfile` + `NVE_API_KEY`-miljøvariabel), eller egen VPS bak en reverse proxy.
+
+**Verdt å vite ved en delt deploy:**
+- NVE-nøkkelen ligger trygt server-side (eksponeres aldri i nettleseren), men **alle med lenken** kan se data,
+  legge inn observasjoner og bytte kartbilde. Greit for venner — ikke en offentlig tjeneste.
+- Render free-tier har **flyktig filsystem**: fiskeloggen (`data/`) nullstilles ved redeploy/dvale. Vil du ta vare
+  på loggen over tid, kjør lokalt eller legg på et persistent volum.
+
+Enklest og mest privat er å kjøre **lokalt** (se «Kom i gang»).
 
 ## Filer
 

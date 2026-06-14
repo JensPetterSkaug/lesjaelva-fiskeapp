@@ -55,6 +55,8 @@ OBS_COLS = [
 ]
 
 PORT = int(os.environ.get("PORT", "8765"))
+# 127.0.0.1 lokalt (trygt), 0.0.0.0 i skyen (sett HOST=0.0.0.0 ved deploy)
+HOST = os.environ.get("HOST", "127.0.0.1")
 CONTACT = os.environ.get("MET_CONTACT", "jens-petter.skaug@knowit.no")
 USER_AGENT = "LesjaelvaFiskedashboard/1.0 (kontakt: %s)" % CONTACT
 
@@ -73,6 +75,7 @@ DEFAULTS = {
     "lat": 62.1235,
     "lon": 8.8678,
     "altitude": 560,
+    "mapFile": "Lesjaelva sone 7.png",   # ligger i public/, vises by default ved deploy
 }
 
 # Enkel in-memory cache: { url: (timestamp, status, headers, body_bytes) }
@@ -552,8 +555,9 @@ def main():
           (cfg["station"], cfg["lat"], cfg["lon"], cfg["altitude"]))
     print(" NVE-nøkkel:  %s" % ("satt ✓" if cfg.get("nveApiKey") else "MANGLER – legg inn i innstillinger"))
     print(" MET-kontakt: %s" % CONTACT)
+    print(" Binder til:  %s:%d" % (HOST, PORT))
     print("=" * 60)
-    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
