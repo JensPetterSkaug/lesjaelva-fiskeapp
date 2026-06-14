@@ -367,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_met(qs)
         if path == "/api/pressure":
             return self.handle_pressure(qs)
+        if path == "/api/obs":
+            return self.handle_obs(qs)
         if path.startswith("/api/nve/"):
             return self.handle_nve(path[len("/api/nve/"):], parsed.query)
         if path == "/api/normals":
@@ -462,6 +464,7 @@ class Handler(BaseHTTPRequestHandler):
         cfg = load_config()
         self.send_json({
             "hasKey": bool(cfg.get("nveApiKey")),
+            "hasFrost": bool(cfg.get("frostClientId") or os.environ.get("FROST_CLIENT_ID")),
             "station": cfg.get("station"),
             "stations": cfg.get("stations"),
             "lat": cfg.get("lat"),
@@ -507,6 +510,37 @@ class Handler(BaseHTTPRequestHandler):
         url = "%s?lat=%s&lon=%s&altitude=%s" % (MET_URL, lat, lon, alt)
         status, ct, body = fetch(url, {"User-Agent": USER_AGENT, "Accept": "application/json"})
         self.send_raw(status, "application/json; charset=utf-8", body)
+
+    # ---- Frost: faktiske observasjoner (vind/temp/trykk) ----
+    def handle_obs(self, qs):
+        import datetime as _dt
+        cfg = load_config()
+        cid = cfg.get("frostClientId") or os.environ.get("FROST_CLIENT_ID")
+        if not cid:
+            return self.send_json({"error": "no_frost",
+                                   "message": "Frost client-id mangler. Sett frostClientId i config "
+                                              "eller FROST_CLIENT_ID. Hent gratis på frost.met.no/auth/requestCredentials.html"}, 200)
+        source = (qs.get("source") or ["SN16845"])[0]
+        elements = (qs.get("elements") or ["air_temperature,wind_speed,wind_from_direction"])[0]
+        # floor til hel time -> stabil URL -> cache treffer (obs oppdateres ~hver time)
+        now = _dt.datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+        fr = now - _dt.timedelta(hours=3)
+        rt = fr.strftime("%Y-%m-%dT%H:%M:%SZ") + "/" + now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        url = ("https://frost.met.no/observations/v0.jsonld?sources=%s&referencetime=%s&elements=%s"
+               % (urllib.parse.quote(source), urllib.parse.quote(rt), urllib.parse.quote(elements)))
+        auth = base64.b64encode((cid + ":").encode()).decode()
+        status, ct, body = fetch(url, {"Authorization": "Basic " + auth, "Accept": "application/json"})
+        try:
+            d = json.loads(body)
+            values, units, tlast = {}, {}, None
+            for entry in d.get("data", []):           # tidssortert -> siste vinner
+                tlast = entry.get("referenceTime")
+                for o in entry.get("observations", []):
+                    values[o["elementId"]] = o["value"]
+                    units[o["elementId"]] = o.get("unit")
+            self.send_json({"source": source, "time": tlast, "values": values, "units": units})
+        except Exception as e:
+            self.send_json({"error": "frost_parse", "detail": str(e)}, 200)
 
     # ---- lufttrykk (Open-Meteo: historikk + prognose, ingen nøkkel) ----
     def handle_pressure(self, qs):

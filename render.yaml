@@ -13,5 +13,7 @@ services:
         value: "0.0.0.0"
       - key: NVE_API_KEY
         sync: false          # fylles inn manuelt i Render (eksponeres aldri i repoet)
+      - key: FROST_CLIENT_ID
+        sync: false          # MET Frost (målte observasjoner) – valgfri
       - key: MET_CONTACT
         value: "jens-petter.skaug@knowit.no"
