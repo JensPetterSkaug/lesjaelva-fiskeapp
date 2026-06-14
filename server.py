@@ -365,6 +365,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_get_config()
         if path == "/api/met":
             return self.handle_met(qs)
+        if path == "/api/pressure":
+            return self.handle_pressure(qs)
         if path.startswith("/api/nve/"):
             return self.handle_nve(path[len("/api/nve/"):], parsed.query)
         if path == "/api/normals":
@@ -504,6 +506,21 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "bad_coords"}, 400)
         url = "%s?lat=%s&lon=%s&altitude=%s" % (MET_URL, lat, lon, alt)
         status, ct, body = fetch(url, {"User-Agent": USER_AGENT, "Accept": "application/json"})
+        self.send_raw(status, "application/json; charset=utf-8", body)
+
+    # ---- lufttrykk (Open-Meteo: historikk + prognose, ingen nøkkel) ----
+    def handle_pressure(self, qs):
+        cfg = load_config()
+        lat = (qs.get("lat") or [cfg["lat"]])[0]
+        lon = (qs.get("lon") or [cfg["lon"]])[0]
+        try:
+            lat = round(float(lat), 4)
+            lon = round(float(lon), 4)
+        except Exception:
+            return self.send_json({"error": "bad_coords"}, 400)
+        url = ("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
+               "&hourly=pressure_msl&past_days=14&forecast_days=7&timezone=Europe%%2FOslo" % (lat, lon))
+        status, ct, body = fetch(url, {"Accept": "application/json"})
         self.send_raw(status, "application/json; charset=utf-8", body)
 
     # ---- NVE proxy ----
