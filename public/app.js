@@ -975,7 +975,7 @@ function renderLeeMap(){
       else { color="#d8624a"; r=5; label="vindutsatt"; }
     }
     L.circleMarker([p.lat,p.lon],{radius:r,color:color,fillColor:color,fillOpacity:.55,weight:1.5})
-      .bindPopup(`<b>${label}</b><br>terrenghorisont oppstrøms vinden: ${s!=null?Math.round(s)+"°":"–"}<br>${Math.round(p.elev)} moh`)
+      .bindPopup(`${p.navn?`<b>${p.navn}</b><br>`:""}${label} — terrenghorisont oppstrøms vinden: ${s!=null?Math.round(s)+"°":"–"}<br>${Math.round(p.elev)} moh`)
       .addTo(LEELAYER);
   });
   if(leg) leg.innerHTML=`
@@ -1014,7 +1014,7 @@ function renderLeeList(){
   if(!T||!T.length || wind==null){
     host.innerHTML=`<div class="empty">Vindretning ikke tilgjengelig for valgt dag — kan ikke rangere leplasser.</div>`; return;
   }
-  const ranked=T.map(p=>({lat:p.lat,lon:p.lon,elev:p.elev,s:shelterDeg(p,wind)}))
+  const ranked=T.map(p=>({lat:p.lat,lon:p.lon,elev:p.elev,navn:p.navn,s:shelterDeg(p,wind)}))
                 .sort((a,b)=>b.s-a.s).slice(0,5);
   const lbl=(STATE.selected==null?"Nå":dayLabel(STATE.days[STATE.selected].date));
   host.innerHTML=`<div class="leelist-h">Topp 5 leplasser · ${lbl} · vind fra ${degToCompass(wind)} (${Math.round(wind)}°)</div>`+
@@ -1022,7 +1022,7 @@ function renderLeeList(){
       const [t,c]=leeLabel(p.s), dst=`${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
       return `<div class="leerow">
         <span class="lr-rank">${i+1}</span>
-        <span class="lr-place">${leePlace(p.lon)}</span>
+        <span class="lr-place">${p.navn||leePlace(p.lon)}</span>
         <span class="lr-shel" style="color:${c}">${Math.round(p.s*10)/10}° ${t}</span>
         <span class="lr-coord">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>
         <a class="lr-link" href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">Veibeskrivelse →</a>
