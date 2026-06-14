@@ -162,6 +162,17 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .leemap .leaflet-popup-content-wrapper,.leemap .leaflet-popup-tip{background:var(--panel);color:var(--ink)}
 .leaflet-container{background:#0f2126;font-family:var(--sans)}
 
+/* leplass-liste */
+.leelist{margin-top:14px}
+.leelist-h{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.leerow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.leerow .lr-rank{font-family:var(--mono);color:var(--teal);font-weight:600;width:18px;text-align:center;flex:0 0 auto}
+.leerow .lr-place{flex:1 1 150px;color:var(--ink)}
+.leerow .lr-shel{font-family:var(--mono);font-size:12.5px;flex:0 0 auto}
+.leerow .lr-coord{font-family:var(--mono);font-size:11.5px;color:var(--mut2);flex:0 0 auto}
+.leerow .lr-link{flex:0 0 auto;font-size:12.5px;white-space:nowrap}
+.leelist .empty{color:var(--mut2);font-size:12.5px;padding:8px 0}
+
 /* fiskelogg */
 .logsec{margin-bottom:14px}
 .obsform{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}

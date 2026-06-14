@@ -518,7 +518,7 @@ function renderSpark(){
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;
 }
 
-function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderMap(); renderLeeMap(); }
+function selectDay(i){ STATE.selected=i; renderHero(); renderForecast(); renderMap(); renderLeeMap(); renderLeeList(); }
 
 /* ---------- vindkart ---------- */
 function renderMap(){
@@ -605,7 +605,7 @@ async function refresh(){
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
-    loadLeeTerrain().then(renderLeeMap).catch(()=>{});
+    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); }).catch(()=>{});
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
     else if(!okWater) setLive("warn","vær OK · ingen vann-serie funnet");
@@ -989,6 +989,43 @@ function renderLeeMap(){
       : `<b>${lbl}:</b> vind fra <b>${degToCompass(wind)}</b> (${Math.round(wind)}°). ${nLe} av ${T.length} elvepunkt ligger i le der terrenget stiger oppstrøms vinden. <span class="muted">Skjerming = hvor bratt terrenget reiser seg i vindretningen (terrenghorisont). Modell på dalskala — finbankede svinger fanges ikke. Kilde: Kartverket høydedata.</span>`;
   }
   setTimeout(()=>{ if(LEEMAP) LEEMAP.invalidateSize(); },120);
+}
+/* stedsnavn ut fra lengdegrad langs dalen */
+function leePlace(lon){
+  if(lon<8.64) return "Øvre (Lesjaskogvatnet-utløp)";
+  if(lon<8.70) return "Leirmo / Lora";
+  if(lon<8.80) return "Lora–Stavem";
+  if(lon<8.90) return "Lesja";
+  if(lon<8.96) return "Lesja–Bottheim";
+  return "Bottheim–Brustugubrue";
+}
+function leeLabel(s){
+  if(s>=10) return ["god le","#4fb6a8"];
+  if(s>=5)  return ["noe le","#6fc27a"];
+  if(s>=2)  return ["svak le","#c9b85a"];
+  return ["vindutsatt","#d8624a"];
+}
+/* topp 5 leplasser for valgt dags vind, med Google Maps-veibeskrivelse */
+function renderLeeList(){
+  const host=$("leeList"), T=STATE.terrain; if(!host) return;
+  const wind=mapWindDir();
+  if(!T||!T.length || wind==null){
+    host.innerHTML=`<div class="empty">Vindretning ikke tilgjengelig for valgt dag — kan ikke rangere leplasser.</div>`; return;
+  }
+  const ranked=T.map(p=>({lat:p.lat,lon:p.lon,elev:p.elev,s:shelterDeg(p,wind)}))
+                .sort((a,b)=>b.s-a.s).slice(0,5);
+  const lbl=(STATE.selected==null?"Nå":dayLabel(STATE.days[STATE.selected].date));
+  host.innerHTML=`<div class="leelist-h">Topp 5 leplasser · ${lbl} · vind fra ${degToCompass(wind)} (${Math.round(wind)}°)</div>`+
+    ranked.map((p,i)=>{
+      const [t,c]=leeLabel(p.s), dst=`${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+      return `<div class="leerow">
+        <span class="lr-rank">${i+1}</span>
+        <span class="lr-place">${leePlace(p.lon)}</span>
+        <span class="lr-shel" style="color:${c}">${Math.round(p.s*10)/10}° ${t}</span>
+        <span class="lr-coord">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>
+        <a class="lr-link" href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">Veibeskrivelse →</a>
+      </div>`;
+    }).join("");
 }
 
 /* ---------- fiskelogg ---------- */
