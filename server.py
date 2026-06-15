@@ -155,6 +155,54 @@ def upsert_forecast(row):
     return len(rows)
 
 
+# ---------- Supabase (varig lagring via REST, kun stdlib) ----------
+def _sb_creds():
+    cfg = load_config()
+    url = (os.environ.get("SUPABASE_URL") or cfg.get("supabaseUrl") or "").rstrip("/")
+    key = os.environ.get("SUPABASE_KEY") or cfg.get("supabaseKey") or ""
+    return url, key
+
+
+def sb_enabled():
+    u, k = _sb_creds()
+    return bool(u and k)
+
+
+def sb_write(table, row, upsert=False):
+    """Skriv én rad til Supabase. Feiler stille (lokal logg er uansett kilden)."""
+    u, k = _sb_creds()
+    if not (u and k):
+        return False
+    body = json.dumps(row).encode("utf-8")
+    prefer = "resolution=merge-duplicates,return=minimal" if upsert else "return=minimal"
+    headers = {"apikey": k, "Authorization": "Bearer " + k,
+               "Content-Type": "application/json", "Prefer": prefer}
+    req = urllib.request.Request(u + "/rest/v1/" + table, data=body, headers=headers, method="POST")
+    try:
+        urllib.request.urlopen(req, timeout=15)
+        return True
+    except Exception as e:
+        print("[supabase] skriving til %s feilet: %s" % (table, e), file=sys.stderr)
+        return False
+
+
+def sb_read(table):
+    """Les alle data-objekter fra en tabell, sortert kronologisk. None ved feil."""
+    u, k = _sb_creds()
+    if not (u and k):
+        return None
+    headers = {"apikey": k, "Authorization": "Bearer " + k, "Accept": "application/json"}
+    url = u + "/rest/v1/" + table + "?select=data&order=logget.asc"
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            rows = json.loads(r.read().decode("utf-8"))
+        return [x.get("data") for x in rows if isinstance(x, dict) and x.get("data") is not None]
+    except Exception as e:
+        print("[supabase] lesing fra %s feilet: %s" % (table, e), file=sys.stderr)
+        return None
+
+
 # ---------- minimal .xlsx-skriver (kun stdlib) ----------
 def _col_letter(n):
     s = ""
@@ -234,9 +282,15 @@ def export_xlsx_bytes():
         for d in data:
             rows.append([d.get(k, "") for k, _ in cols])
         return rows
+    prog = sb_read("prognose")
+    if prog is None:
+        prog = read_jsonl(PROG_PATH)
+    obs = sb_read("observasjoner")
+    if obs is None:
+        obs = read_jsonl(OBS_PATH)
     return build_xlsx([
-        ("Prognose", mk(PROG_COLS, read_jsonl(PROG_PATH))),
-        ("Observasjoner", mk(OBS_COLS, read_jsonl(OBS_PATH))),
+        ("Prognose", mk(PROG_COLS, prog)),
+        ("Observasjoner", mk(OBS_COLS, obs)),
     ])
 
 
@@ -383,10 +437,18 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send_json({"error": "normals_failed", "detail": str(e)}, 200)
         if path == "/api/observations":
-            return self.send_json({"rows": read_jsonl(OBS_PATH)})
+            obs = sb_read("observasjoner")
+            if obs is None:
+                obs = read_jsonl(OBS_PATH)
+            return self.send_json({"rows": obs})
         if path == "/api/logstatus":
-            return self.send_json({"prognose": len(read_jsonl(PROG_PATH)),
-                                   "observasjoner": len(read_jsonl(OBS_PATH))})
+            prog = sb_read("prognose"); obs = sb_read("observasjoner")
+            if prog is None:
+                prog = read_jsonl(PROG_PATH)
+            if obs is None:
+                obs = read_jsonl(OBS_PATH)
+            return self.send_json({"prognose": len(prog), "observasjoner": len(obs),
+                                   "lagring": "supabase" if sb_enabled() else "lokal"})
         if path == "/api/export.xlsx":
             body = export_xlsx_bytes()
             self.send_response(200)
@@ -424,6 +486,7 @@ class Handler(BaseHTTPRequestHandler):
         allowed = {k for k, _ in PROG_COLS}
         row = {k: v for k, v in data.items() if k in allowed}
         n = upsert_forecast(row)
+        sb_write("prognose", {"dato": row.get("dato"), "data": row}, upsert=True)
         self.send_json({"ok": True, "rows": n})
 
     def handle_log_observation(self):
@@ -433,6 +496,7 @@ class Handler(BaseHTTPRequestHandler):
         allowed = {k for k, _ in OBS_COLS}
         row = {k: v for k, v in data.items() if k in allowed}
         append_jsonl(OBS_PATH, row)
+        sb_write("observasjoner", {"dato": row.get("dato"), "data": row})
         self.send_json({"ok": True})
 
     # ---- config ----
@@ -441,6 +505,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({
             "hasKey": bool(cfg.get("nveApiKey")),
             "hasFrost": bool(cfg.get("frostClientId") or os.environ.get("FROST_CLIENT_ID")),
+            "hasSupabase": sb_enabled(),
             "station": cfg.get("station"),
             "stations": cfg.get("stations"),
             "lat": cfg.get("lat"),

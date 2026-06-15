@@ -15,5 +15,9 @@ services:
         sync: false          # fylles inn manuelt i Render (eksponeres aldri i repoet)
       - key: FROST_CLIENT_ID
         sync: false          # MET Frost (målte observasjoner) – valgfri
+      - key: SUPABASE_URL
+        sync: false          # varig lagring av prognose/observasjoner
+      - key: SUPABASE_KEY
+        sync: false          # Supabase service-nøkkel (sb_secret_…) – hemmelig
       - key: MET_CONTACT
         value: "jens-petter.skaug@knowit.no"
