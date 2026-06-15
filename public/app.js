@@ -894,7 +894,9 @@ function shelterDeg(point, windFrom){
   if(windFrom==null) return null;
   let best=0;
   for(const k in point.horizon){
-    const dd=parseInt(k,10), diff=Math.abs(((dd-windFrom+180)%360)-180);
+    const dd=parseInt(k,10);
+    let diff=((dd-windFrom)%360+360)%360;   // korrekt vinkelavstand 0..360 (positiv modulo)
+    if(diff>180) diff=360-diff;             // -> minste separasjon 0..180
     if(diff<=30) best=Math.max(best, point.horizon[k]);
   }
   return best;
