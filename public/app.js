@@ -692,22 +692,17 @@ function renderDombasChart(){
   if(hasNorm) stageAll=stageAll.concat(np25.filter(v=>v!=null),np75.filter(v=>v!=null));
   let sMin=Math.min(...stageAll), sMax=Math.max(...stageAll);
   const sPad=(sMax-sMin)*0.12||0.1; sMin-=sPad; sMax+=sPad;
-  const flowVals=histS.map(s=>flowByDate[s.date]).filter(v=>v!=null);
-  let fMax=(flowVals.length?Math.max(...flowVals):1)*1.15||1;
-
-  const W=1000,H=320,pL=48,pR=56,pT=14,pB=42, pw=W-pL-pR, ph=H-pT-pB;
+  const W=1000,H=320,pL=48,pR=18,pT=14,pB=42, pw=W-pL-pR, ph=H-pT-pB;
   const x=i=>pL+i*(pw/(N-1));
   const yS=v=>pT+ph*(1-(v-sMin)/(sMax-sMin));
-  const yF=v=>pT+ph*(1-v/fMax);
   const fmt2=v=>(Math.round(v*100)/100).toString().replace(".",",");
 
-  // akse-ticks
-  let grid="", axL="", axR="";
+  // akse-ticks (kun vannstand, venstre)
+  let grid="", axL="";
   for(let t=0;t<=4;t++){
-    const sv=sMin+(sMax-sMin)*t/4, fv=fMax*t/4, yy=yS(sv);
+    const sv=sMin+(sMax-sMin)*t/4, yy=yS(sv);
     grid+=`<line x1="${pL}" y1="${yy.toFixed(1)}" x2="${pL+pw}" y2="${yy.toFixed(1)}" stroke="rgba(126,154,152,.13)"/>`;
     axL+=`<text x="${pL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end" font-size="11" fill="#7e9a98" font-family="ui-monospace,monospace">${fmt2(sv)}</text>`;
-    axR+=`<text x="${pL+pw+6}" y="${(yF(fv)+3).toFixed(1)}" text-anchor="start" font-size="11" fill="#5e86b0" font-family="ui-monospace,monospace">${Math.round(fv)}</text>`;
   }
   // sesongnormal: bånd p25–p75 + median p50
   let normBand="", normMed="";
@@ -742,9 +737,6 @@ function renderDombasChart(){
   const stageHistPath=histS.map((s,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+yS(s.v).toFixed(1)).join(" ");
   const fcLinePts=[[x(iToday),yS(histS[histS.length-1].v)]].concat(fc.map((f,j)=>[x(iToday+1+j),yS(f.stage)]));
   const stageFcPath=fcLinePts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
-  let flowPath="", started=false, flowDots="";
-  histS.forEach((s,i)=>{ const v=flowByDate[s.date]; if(v==null) return; flowPath+=(started?"L":"M")+x(i).toFixed(1)+" "+yF(v).toFixed(1)+" "; started=true; });
-
   const todayX=x(iToday).toFixed(1);
   const baseY=yS(B).toFixed(1);
 
@@ -757,19 +749,16 @@ function renderDombasChart(){
     <line x1="${todayX}" y1="${pT}" x2="${todayX}" y2="${H-pB}" stroke="rgba(79,182,168,.5)" stroke-width="1" stroke-dasharray="4 3"/>
     <text x="${todayX}" y="${pT+10}" text-anchor="middle" font-size="10" fill="#4fb6a8">i dag</text>
     ${band}
-    <path d="${flowPath.trim()}" fill="none" stroke="#5e86b0" stroke-width="1.6" opacity="0.85"/>
     <path d="${stageHistPath}" fill="none" stroke="#4fb6a8" stroke-width="2.4"/>
     <path d="${stageFcPath}" fill="none" stroke="#e0935a" stroke-width="2.4" stroke-dasharray="6 4"/>
     <circle cx="${todayX}" cy="${yS(histS[histS.length-1].v)}" r="3.6" fill="#4fb6a8"/>
-    ${axL}${axR}${xlab}
+    ${axL}${xlab}
     <text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">m</text>
-    <text x="${pL+pw+6}" y="${pT-2}" text-anchor="start" font-size="10" fill="#5e86b0">m³/s</text>
   </svg>`;
 
   leg.innerHTML=`
     <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Vannstand (målt)</span>
-    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Vannstand (prognose)</span>
-    <span class="lg"><span class="sw" style="border-color:#5e86b0"></span>Vannføring (målt)</span>`+
+    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Vannstand (prognose)</span>`+
     (hasNorm?`<span class="lg"><span class="sw" style="border-color:rgba(126,154,152,.7);border-top-style:dashed"></span>Normal p25–p75 (${D.normals.years[0]}–${D.normals.years[1]})</span>`:``)+
     `<span class="lg"><span class="sw" style="border-color:rgba(94,134,176,.5)"></span>Nedbør (prognose)</span>`;
 
