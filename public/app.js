@@ -550,11 +550,12 @@ async function refresh(){
     await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
     buildDays();
     STATE.selected=null;
-    renderMeta(); renderHero(); renderForecast(); renderDailyReport();
+    renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow();
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
-    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); }).catch(()=>{});
+    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderTomorrow(); }).catch(()=>{});
+    applyTabs(STATE.tab||"prognose");
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
     else if(!okWater) setLive("warn","vær OK · ingen vann-serie funnet");
@@ -1227,6 +1228,54 @@ async function saveObs(){
     setTimeout(()=>{$("logMsg").textContent="";},2500);
   }catch(e){ $("logMsg").textContent="Feil ved lagring"; }
 }
+
+/* ---------- mobil bunn-meny (faner) ---------- */
+const HOME_BLOCKS=["heroSec","gate","colsRow","forecast","mapsec","reportsec","dombasSec","pressSec","logsec"];
+const TAB_BLOCKS={
+  dagsrapport:["reportsec"],
+  fishon:["heroSec","gate","colsRow","mapsec"],
+  fiskerapport:["logsec"],
+  imorgen:["tomorrowSec"]
+};
+function applyTabs(active){
+  STATE.tab=active;
+  const all=HOME_BLOCKS.concat("tomorrowSec");
+  const mobile=window.matchMedia("(max-width:700px)").matches;
+  if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", id==="tomorrowSec"); }); return; }
+  const show = active==="prognose" ? HOME_BLOCKS : (TAB_BLOCKS[active]||HOME_BLOCKS);
+  all.forEach(id=>{ const e=$(id); if(e) e.classList.toggle("tab-hidden", !show.includes(id)); });
+  document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===active));
+}
+function renderTomorrow(){
+  const host=$("tomorrowSec"); if(!host) return;
+  const d=STATE.days&&STATE.days[1];
+  if(!d){ host.innerHTML=`<div class="panel"><div class="empty">Venter på data …</div></div>`; return; }
+  const [vt,vc]=verdict(d.idx.score);
+  let leTxt="–";
+  if(STATE.terrain&&STATE.terrain.length&&d.md.windDir!=null){
+    const best=STATE.terrain.map(p=>({p,s:shelterDeg(p,d.md.windDir)})).sort((a,b)=>b.s-a.s)[0];
+    if(best) leTxt=`${best.p.navn||leePlace(best.p.lon)} (${Math.round(best.s)}°)`;
+  }
+  host.innerHTML=`<div class="panel"><h3>I morgen · ${dayLabel(d.date)}</h3>
+    <div class="tomorrow">
+      <div class="tm-gauge"><div class="tm-num" style="color:${vc}">${d.idx.score}</div><div class="tm-vd" style="color:${vc}">${vt}</div></div>
+      <div class="tm-facts">
+        <div>Vanntemp <b>${fmt1(d.wt)}°</b></div>
+        <div>Vind <b>${fmt1(d.md.wind)} m/s${d.md.windDir!=null?" "+degToCompass(d.md.windDir):""}</b></div>
+        <div>Vær <b>${fmt0(d.md.cloud)}% sky · ${fmt1(d.precip)} mm</b></div>
+        <div>Klekking <b>${HATCH_LABEL[d.state.hatch]||""}</b></div>
+        <div>Vannføring <b>${FLOW_LABEL[d.fcat]||""}</b></div>
+        <div>Beste le <b>${leTxt}</b></div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:12px">Begrensende faktor: <b style="color:var(--ink)">${PART_LABELS[d.idx.limiting.key]}</b>. Åpne «Dagsrapport»-fanen for time-for-time i morgen.</p>
+  </div>`;
+}
+document.querySelectorAll(".tabbar button").forEach(b=>{
+  b.onclick=()=>{ const t=b.dataset.tab; if(t==="imorgen") renderTomorrow(); applyTabs(t); window.scrollTo(0,0); };
+});
+window.addEventListener("resize",()=>applyTabs(STATE.tab||"prognose"));
+applyTabs("prognose");
 
 $("refreshBtn").onclick=refresh;
 $("settingsBtn").onclick=openModal;

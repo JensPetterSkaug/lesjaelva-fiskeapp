@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -26,7 +27,7 @@
   </header>
 
   <!-- NÅ-STATUS -->
-  <section class="hero">
+  <section class="hero" id="heroSec">
     <div class="gauge-card">
       <div class="gauge">
         <div><span class="gnum" id="score">–</span><span class="gmax"> /100</span></div>
@@ -47,7 +48,7 @@
   <div class="gate" id="gate"></div>
 
   <!-- TO HOVEDSPALTER -->
-  <div class="cols">
+  <div class="cols" id="colsRow">
     <section class="panel breakdown">
       <h3>Bidrag til indeksen <span class="muted" id="bdWhen"></span></h3>
       <div id="bars"></div>
@@ -60,7 +61,7 @@
   </div>
 
   <!-- 14-DAGERS PROGNOSE -->
-  <section class="panel forecast">
+  <section class="panel forecast" id="forecast">
     <div class="fc-head">
       <h3>14-dagers prognose</h3>
       <p class="muted fc-note">Klikk en dag for å se den i måleren over. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
@@ -70,7 +71,7 @@
   </section>
 
   <!-- LE-KART (interaktivt, terreng + vind) -->
-  <section class="panel mapsec">
+  <section class="panel mapsec" id="mapsec">
     <div class="fc-head">
       <h3>Le-kart <span class="muted">· terreng + vind</span></h3>
       <p class="muted fc-note">Interaktivt kart (Kartverket topo). Grønne punkt = sannsynlig <b>le</b> for valgt dags vind — terrenget stiger oppstrøms vinden og skjermer. Røde = vindutsatt. Klikk en dag i prognosen for å oppdatere.</p>
@@ -82,7 +83,7 @@
   </section>
 
   <!-- DAGSRAPPORT – time for time -->
-  <section class="panel reportsec">
+  <section class="panel reportsec" id="reportsec">
     <div class="fc-head">
       <h3>Dagsrapport — time for time <span class="muted" id="reportWhen"></span></h3>
       <p class="muted fc-note">Beste fiskeplass blant elvepunktene time for time. Modellen veier solhøyde/lys, terrengskygge på plassen, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet. Klikk en dag i prognosen for en annen dato (krever MET-timesprognose, ~2–3 døgn fram). Scroll i tabellen for hele døgnet (00–23). Ingen plass foreslås mer enn 4 timer på rad — da byttes det til nest beste plass («variasjon») for å spre fisket.</p>
@@ -93,7 +94,7 @@
   </section>
 
   <!-- DOMBÅS VANNSTAND/VANNFØRING + PROGNOSE -->
-  <section class="panel chartsec">
+  <section class="panel chartsec" id="dombasSec">
     <div class="fc-head">
       <h3>Dombås — vannstand <span class="muted">· 14 dager + 7-dagers prognose</span></h3>
       <p class="muted fc-note">Heltrukket = målt (NVE 2.303.0). Stiplet = prognosert vannstand basert på 30-dagers trend (resesjon) + nedbørsprognose. Skyggebånd = usikkerhet. Grått bånd = sesongnormal (p25–p75).</p>
@@ -104,7 +105,7 @@
   </section>
 
   <!-- LUFTTRYKK-TREND + PROGNOSE -->
-  <section class="panel chartsec">
+  <section class="panel chartsec" id="pressSec">
     <div class="fc-head">
       <h3>Lufttrykk-trend <span class="muted">· 14 dager + 7-dagers prognose</span></h3>
       <p class="muted fc-note">Heltrukket = faktisk målt siste 14 d (Frost, Dovre-Lannem), stiplet = MET-prognose. Fallende trykk før en front gir ofte best fiske; stabilt høytrykk er nøytralt.</p>
@@ -114,8 +115,11 @@
     <div class="chartcap" id="pressCap"></div>
   </section>
 
+  <!-- I MORGEN (kompakt, kun mobil-fane) -->
+  <section id="tomorrowSec"></section>
+
   <!-- FISKELOGG -->
-  <section class="panel logsec">
+  <section class="panel logsec" id="logsec">
     <div class="fc-head">
       <h3>Min fiskelogg <span class="muted" id="logCount"></span></h3>
       <p class="muted fc-note">Prognosen lagres automatisk én rad per dag. Her rapporterer du inn det du faktisk så ved elva — alt havner i samme Excel-ark (to faner: Prognose + Observasjoner), koblet på dato.</p>
@@ -204,6 +208,15 @@
     <p class="modal-status" id="modalStatus"></p>
   </div>
 </div>
+
+<!-- BUNN-MENY (kun mobil) -->
+<nav class="tabbar" id="tabbar" aria-label="Hovedmeny">
+  <button data-tab="prognose" aria-label="Prognose"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Prognose</span></button>
+  <button data-tab="dagsrapport" aria-label="Dagsrapport"><i class="fa-solid fa-sun" aria-hidden="true"></i><span>Dagsrapport</span></button>
+  <button data-tab="fishon" class="center" aria-label="Fishon"><i class="fa-solid fa-fish" aria-hidden="true"></i><span>Fishon</span></button>
+  <button data-tab="fiskerapport" aria-label="Fiskerapport"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i><span>Fiskerapport</span></button>
+  <button data-tab="imorgen" aria-label="I morgen"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>I morgen</span></button>
+</nav>
 
 <script src="/scoring.js"></script>
 <script src="/app.js"></script>
