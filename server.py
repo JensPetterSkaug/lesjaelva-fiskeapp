@@ -35,6 +35,7 @@ CONFIG_PATH = os.path.join(ROOT, "config.json")
 DATA_DIR = os.path.join(ROOT, "data")
 PROG_PATH = os.path.join(DATA_DIR, "prognose.jsonl")
 OBS_PATH = os.path.join(DATA_DIR, "observasjoner.jsonl")
+FAKTISK_PATH = os.path.join(DATA_DIR, "faktisk.jsonl")
 
 # kolonner i Excel-eksporten (nøkkel i lagret rad -> overskrift)
 PROG_COLS = [
@@ -48,6 +49,15 @@ PROG_COLS = [
     ("lufttemp_lora_malt", "Lufttemp Lora MÅLT (°C)"), ("vind_lora_malt", "Vind Lora MÅLT (m/s)"), ("vindretn_lora_malt", "Vindretning Lora MÅLT"),
     ("lufttrykk", "Lufttrykk (hPa)"), ("nedbor", "Nedbør (mm)"), ("klarhet", "Vannklarhet (utledet)"),
     ("klekking", "Klekking"), ("begrensende", "Begrensende faktor"),
+]
+FAKTISK_COLS = [
+    ("dato", "Dato"), ("logget", "Logget (UTC)"),
+    ("vanntemp_lesja", "Vanntemp Lesjavatnet MÅLT (°C)"), ("vannf_lesja", "Vannføring Lesjavatnet MÅLT (m³/s)"),
+    ("vannstand_lesja", "Vannstand Lesjavatnet MÅLT (m)"),
+    ("vanntemp_dombas", "Vanntemp Dombås MÅLT (°C)"), ("vannf_dombas", "Vannføring Dombås MÅLT (m³/s)"),
+    ("vannstand_dombas", "Vannstand Dombås MÅLT (m)"),
+    ("lufttemp_lora_malt", "Lufttemp Lora MÅLT (°C)"), ("vind_lora_malt", "Vind Lora MÅLT (m/s)"),
+    ("vindretn_lora_malt", "Vindretning Lora MÅLT (°)"), ("lufttrykk_malt", "Lufttrykk Dovre MÅLT (hPa)"),
 ]
 OBS_COLS = [
     ("dato", "Dato"), ("strekning", "Strekning"), ("timer", "Timer fisket"), ("antall", "Antall fisk"),
@@ -203,6 +213,86 @@ def sb_read(table):
         return None
 
 
+# ---------- daglig snapshot av FAKTISKE målte data (NVE + Frost) ----------
+def _nve_latest(station, key):
+    import datetime as _dt
+    to = _dt.date.today()
+    fr = to - _dt.timedelta(days=7)
+    ref = "%s/%s" % (fr.isoformat(), to.isoformat())
+    url = (NVE_BASE + "Observations?StationId=%s&Parameter=1003,1001,1000&ResolutionTime=1440&ReferenceTime=%s"
+           % (station, ref))
+    status, ct, body = fetch(url, {"X-API-Key": key, "Accept": "application/json"}, ttl=300)
+    out = {}
+    try:
+        for s in json.loads(body).get("data", []):
+            obs = [o for o in s.get("observations", []) if o.get("value") is not None]
+            if obs:
+                out[s.get("parameter")] = round(obs[-1]["value"], 3)
+    except Exception:
+        pass
+    return out
+
+
+def _frost_latest(source, elements, cid):
+    import datetime as _dt
+    now = _dt.datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    fr = now - _dt.timedelta(hours=3)
+    rt = fr.strftime("%Y-%m-%dT%H:%M:%SZ") + "/" + now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    url = ("https://frost.met.no/observations/v0.jsonld?sources=%s&referencetime=%s&elements=%s"
+           % (urllib.parse.quote(source), urllib.parse.quote(rt), urllib.parse.quote(elements)))
+    auth = base64.b64encode((cid + ":").encode()).decode()
+    status, ct, body = fetch(url, {"Authorization": "Basic " + auth, "Accept": "application/json"}, ttl=300)
+    vals = {}
+    try:
+        for entry in json.loads(body).get("data", []):
+            for o in entry.get("observations", []):
+                vals[o["elementId"]] = o["value"]
+    except Exception:
+        pass
+    return vals
+
+
+def gather_actuals():
+    import datetime as _dt
+    cfg = load_config()
+    now = _dt.datetime.utcnow()
+    out = {"dato": now.strftime("%Y-%m-%d"), "logget": now.strftime("%Y-%m-%d %H:%M UTC")}
+    key = os.environ.get("NVE_API_KEY") or cfg.get("nveApiKey")
+    if key:
+        for station, tag in (("2.346.0", "lesja"), ("2.303.0", "dombas")):
+            v = _nve_latest(station, key)
+            if 1003 in v:
+                out["vanntemp_" + tag] = v[1003]
+            if 1001 in v:
+                out["vannf_" + tag] = v[1001]
+            if 1000 in v:
+                out["vannstand_" + tag] = v[1000]
+    cid = os.environ.get("FROST_CLIENT_ID") or cfg.get("frostClientId")
+    if cid:
+        w = _frost_latest("SN16845", "air_temperature,wind_speed,wind_from_direction", cid)
+        if "air_temperature" in w:
+            out["lufttemp_lora_malt"] = round(w["air_temperature"], 1)
+        if "wind_speed" in w:
+            out["vind_lora_malt"] = round(w["wind_speed"], 1)
+        if "wind_from_direction" in w:
+            out["vindretn_lora_malt"] = round(w["wind_from_direction"])
+        p = _frost_latest("SN16400", "air_pressure_at_sea_level", cid)
+        if "air_pressure_at_sea_level" in p:
+            out["lufttrykk_malt"] = round(p["air_pressure_at_sea_level"], 1)
+    return out
+
+
+def save_actuals():
+    """Hent + lagre dagens faktiske data (lokal mirror + Supabase, upsert per dato)."""
+    row = gather_actuals()
+    rows = [r for r in read_jsonl(FAKTISK_PATH) if r.get("dato") != row.get("dato")]
+    rows.append(row)
+    rows.sort(key=lambda r: r.get("dato", ""))
+    write_jsonl(FAKTISK_PATH, rows)
+    sb_ok = sb_write("faktisk", {"dato": row.get("dato"), "data": row}, upsert=True)
+    return row, sb_ok
+
+
 # ---------- minimal .xlsx-skriver (kun stdlib) ----------
 def _col_letter(n):
     s = ""
@@ -288,8 +378,12 @@ def export_xlsx_bytes():
     obs = sb_read("observasjoner")
     if obs is None:
         obs = read_jsonl(OBS_PATH)
+    fak = sb_read("faktisk")
+    if fak is None:
+        fak = read_jsonl(FAKTISK_PATH)
     return build_xlsx([
         ("Prognose", mk(PROG_COLS, prog)),
+        ("Faktisk", mk(FAKTISK_COLS, fak)),
         ("Observasjoner", mk(OBS_COLS, obs)),
     ])
 
@@ -436,6 +530,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(compute_normals(station, key))
             except Exception as e:
                 return self.send_json({"error": "normals_failed", "detail": str(e)}, 200)
+        if path == "/api/snapshot":
+            row, sb_ok = save_actuals()
+            fields = [k for k in row if k not in ("dato", "logget")]
+            return self.send_json({"ok": True, "dato": row["dato"], "felt": len(fields),
+                                   "supabase": sb_ok, "row": row})
         if path == "/api/observations":
             obs = sb_read("observasjoner")
             if obs is None:
@@ -447,7 +546,10 @@ class Handler(BaseHTTPRequestHandler):
                 prog = read_jsonl(PROG_PATH)
             if obs is None:
                 obs = read_jsonl(OBS_PATH)
-            return self.send_json({"prognose": len(prog), "observasjoner": len(obs),
+            fak = sb_read("faktisk")
+            if fak is None:
+                fak = read_jsonl(FAKTISK_PATH)
+            return self.send_json({"prognose": len(prog), "faktisk": len(fak), "observasjoner": len(obs),
                                    "lagring": "supabase" if sb_enabled() else "lokal"})
         if path == "/api/export.xlsx":
             body = export_xlsx_bytes()

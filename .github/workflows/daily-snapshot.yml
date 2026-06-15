@@ -1,0 +1,20 @@
+name: Daglig faktisk-snapshot
+
+# Logger dagens faktiske målte data (NVE + Frost) til Supabase én gang i døgnet,
+# uavhengig av om noen åpner appen. Kjør også manuelt via "Run workflow".
+on:
+  schedule:
+    - cron: "0 20 * * *"      # 20:00 UTC daglig (~22:00 norsk sommertid)
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vekk Render og logg faktiske data
+        run: |
+          URL="https://lesjaelva-fiskeapp.onrender.com/api/snapshot"
+          # Render free-tier kan sove – vekk den og tål kald oppstart med retry
+          curl -fsS --max-time 150 --retry 4 --retry-all-errors --retry-delay 30 "$URL"
+          echo
+          echo "Snapshot trigget."
