@@ -173,64 +173,96 @@ function hatchState(date, waterTemp, cloudFrac, rainMm){
   return {cat, score, seasonPot, tPot, wPot};
 }
 
-/* full tekstråd for et gitt døgn */
-function hatchAdvice(date, waterTemp, cloudFrac, rainMm){
+/* ------------------------------------------------------------
+   LESJA SONE 7 – sesongbasert, forhold-styrt fluevalg
+   (syntese fra «Sesongbasert flueguide for Lesjaelva i sone 7»)
+   ------------------------------------------------------------ */
+/* sesongperiode for sone 7 ut fra dag-på-året */
+function lesjaPeriod(doy){
+  if(doy>=152 && doy<=165) return "tidlig";      // ~1.–14. jun: kaldt, snøsmelting
+  if(doy>=166 && doy<=181) return "forsommer";   // 15. jun–30. jun: lesbar tørrflueelv
+  if(doy>=182 && doy<=212) return "hoysommer";   // jul: vårfluer dominerer
+  if(doy>=213 && doy<=243) return "sensommer";   // aug: landinsekter, små mønstre
+  if(doy>=244 && doy<=271) return "host";         // 1.–20. sep: små olivener, mygg
+  return "utenfor";
+}
+const LESJA_PERIOD_TXT={
+  tidlig:"Tidlig sesong på sone 7: kaldt til kjølig vann (ofte 7–11 °C), gjerne preget av snøsmelting. Tenk nymfer, pupper og små olivener — start ofte under overflaten med PT eller en oliven emerger.",
+  forsommer:"Forsommer: sone 7 blir mer lesbar som tørrflueelv. Små oliven døgnfluer (Baetis) først, deretter mellomstore (Aurivillii). På grå/regnfulle dager slår klekkeren ofte dunen.",
+  hoysommer:"Høysommer: vårfluene blir stadig viktigere. CDC Caddis er sterk i blankt, stilleflytende vann; Brun's Caddis når eggleggere gir plaskvak. Klart, rolig vann — fisk gjerne på synlig fisk.",
+  sensommer:"Sensommer: landinsekter og små, diskrete mønstre teller mest — maur, små CDC-vårfluer, ignita/spinner og mygg. Lavt og klart vann: gå ned i størrelse, ikke opp.",
+  host:"Tidlig høst: kort, men god periode for små olivener, mygg og nymfer (Baetis-høstgenerasjon, Ignita). Fisk gjerne subsurface mellom vakene og bytt raskt til emerger når det vaker.",
+  utenfor:"Utenfor ordinær sesong (1. juni–11. sept, utvidet til 20. sept på fluestrekningen Brustugubrue–Lora). Hvis du fisker: små olivener, mygg og slanke nymfer på stille partier."
+};
+/* flueboks for sone 7 – prio fra «må-ha»-rangeringen i guiden.
+   seasons: perioder fluen er aktuell ('all' = hele sesongen).
+   tags: forhold den løftes av (clearLow=lav&klar, overcastRain=grått/regn,
+   highWater=høy/farget, evening=kveldsvak). allRound=basisføde hele tiden. */
+const LESJA_FLIES=[
+  {name:"CDC Caddis",type:"Tørrflue",size:"#12–16",im:"Voksen vårflue",lat:"Trichoptera",prio:1,seasons:["forsommer","hoysommer","sensommer","host"],tags:["clearLow","evening"],tip:"Sterk i blankt, stilleflytende vann; fiskes dødt eller med bittesmå twitch."},
+  {name:"CDC Comparadun Olive",type:"Tørrflue",size:"#14–18",im:"Liten døgnflue (baetis)",lat:"Baetis rhodani",prio:2,seasons:["tidlig","forsommer","hoysommer","sensommer","host"],tags:["clearLow"],allRound:true,tip:"Allround oliven dun — perfekt i klart, lavt vann; fiskes helt dødt."},
+  {name:"Pheasant Tail Nymph",type:"Nymfe",size:"#14–18",im:"Døgnflue-nymfe",lat:"Baetis / Ephemerella",prio:3,seasons:["all"],tags:["highWater"],allRound:true,tip:"Allround hovednymfe; kort, kontrollert drift mot synlig fisk."},
+  {name:"Klinkhammer Olive",type:"Emerger",size:"#14–16",im:"Klekkende døgnflue",lat:"Baetis / E. aurivillii",prio:4,seasons:["tidlig","forsommer","hoysommer","sensommer","host"],tags:["overcastRain","clearLow"],tip:"Perfekt når fisken bare viser snute; fiskes lavt og dødt i filmen."},
+  {name:"Aurivillii-emerger",type:"Emerger",size:"#12–14",im:"Stor elvedøgnflue (klekker)",lat:"Ephemerella aurivillii",prio:5,seasons:["forsommer","hoysommer"],tags:["overcastRain"],tip:"Nøkkelvalg når aurivillii henger i filmen — fiskes rolig og presist."},
+  {name:"Aurivillii-dun",type:"Tørrflue",size:"#12–14",im:"Stor elvedøgnflue",lat:"Ephemerella aurivillii",prio:6,seasons:["forsommer","hoysommer"],tags:[],tip:"Når fisken vil ha litt større døgnfluer; fisk dødt i glid og flats."},
+  {name:"Sparkle Pupa / Superpuppan",type:"Caddis-puppe",size:"#12–16",im:"Vårfluepuppe",lat:"Trichoptera",prio:7,seasons:["forsommer","hoysommer","sensommer","host"],tags:["evening","highWater"],tip:"Når du ser urolig vårflueaktivitet; drift eller korte løft mot slutten av drift."},
+  {name:"Svart / rød maur",type:"Terrestrial",size:"#12–16",im:"Maur",lat:"Formicidae",prio:8,seasons:["hoysommer","sensommer"],tags:["clearLow"],tip:"Særlig god i lav, klar elv; fiskes dødt eller svært rolig."},
+  {name:"Ignita-dun / spinner",type:"Tørrflue",size:"#14–18",im:"Liten døgnflue",lat:"Ephemerella ignita",prio:9,seasons:["hoysommer","sensommer","host"],tags:["clearLow","evening"],tip:"Når fisken går smått og fint; dødt eller som spent spinner i varme kvelder."},
+  {name:"Shuttlecock / Baetis-emerger",type:"Emerger",size:"#14–18",im:"Liten døgnflue (klekker)",lat:"Baetis rhodani",prio:10,seasons:["tidlig","forsommer","host"],tags:["overcastRain","clearLow"],tip:"Når rene duns blir refusert; fiskes helt dødt."},
+  {name:"Zebra Midge / svart myggnymfe",type:"Nymfe",size:"#16–18",im:"Fjærmygg-puppe",lat:"Chironomidae",prio:11,seasons:["all"],tags:["clearLow"],allRound:true,tip:"Sterk på harr og treg fisk i roligere vann; fiskes sakte og kontrollert."},
+  {name:"Lys hareøre-/olivennymfe",type:"Nymfe",size:"#12–16",im:"Døgnflue-/vårflue-nymfe",lat:"Ephemeroptera",prio:12,seasons:["all"],tags:["highWater"],allRound:true,tip:"Generell døgnflue-/caddisprofil; fiskes dødt."},
+  {name:"Brun's Caddis",type:"Tørrflue",size:"#12–14",im:"Eggleggende vårflue",lat:"Trichoptera",prio:13,seasons:["hoysommer","sensommer"],tags:["evening"],tip:"Når plaskvak avslører eggleggere; fiskes med lite dirr eller kort skate."},
+  {name:"Steinfluenymfe / Montana",type:"Nymfe",size:"#10–12",im:"Steinflue-nymfe",lat:"Plecoptera",prio:14,seasons:["tidlig"],tags:["highWater"],tip:"Viktigst tidlig og ved høy vannføring; fiskes som søkeflue."},
+  {name:"Mygg (klekker/voksen)",type:"Tørrflue",size:"#18–20",im:"Fjærmygg",lat:"Chironomidae",prio:15,seasons:["tidlig","sensommer","host"],tags:["clearLow"],tip:"Smått og fint på stille partier morgen og kveld."},
+  {name:"Olive jig-nymfe",type:"Nymfe",size:"#14–16",im:"Døgnflue-nymfe",lat:"Baetis",prio:16,seasons:["forsommer","hoysommer","sensommer","host"],tags:["highWater"],tip:"Sight-nymphing i litt mer trykk; slank profil tett på bunn."},
+  {name:"Bibio",type:"Terrestrial",size:"#10–12",im:"Bibio / hårmygg",lat:"Bibio",prio:17,seasons:["sensommer"],tags:["clearLow"],tip:"Sensommer/fjelldager med riktig insektbilde; dødt eller lett drivende."},
+  {name:"Black Woolly Bugger",type:"Streamer",size:"#8–10",im:"Byttefisk / stor larve",lat:"—",prio:18,seasons:["tidlig"],tags:["highWater"],tip:"Større silhuett ved høy vannføring eller skumring; fiskes rolig, ikke aggressivt."},
+];
+/* gjeldende forhold -> sett av aktive «tags» */
+function lesjaTags(cloud, precip, wt, fcat, clarity, sunEl){
+  const t=new Set();
+  const cl=cloud==null?60:cloud, rain=precip||0;
+  const highWater = ["high","flood","risingfromlow"].includes(fcat) || ["stained","muddy"].includes(clarity);
+  if(highWater) t.add("highWater");
+  if((cl>=65 && rain>=0.1) || cl>=85) t.add("overcastRain");
+  if(!highWater && cl<75 && ["gin","tinge"].includes(clarity)) t.add("clearLow");
+  if(sunEl!=null && sunEl<8) t.add("evening");
+  if(wt!=null && wt>=14) t.add("warm");
+  return t;
+}
+/* ranger hele flueboksen for sone 7 etter sesong + forhold */
+function rankLesjaFlies(period, tags){
+  return LESJA_FLIES.map(f=>{
+    let s=(20-f.prio)*2;                                   // grunnprioritet fra guiden
+    s += (f.seasons.includes("all")||f.seasons.includes(period)) ? 30 : -38;
+    if(f.tags) f.tags.forEach(tag=>{ if(tags.has(tag)) s+=22; });
+    if(f.allRound) s+=10;                                  // basisføde hele sesongen
+    return {f,s};
+  }).sort((a,b)=>b.s-a.s).map(x=>x.f);
+}
+
+/* full tekstråd + rangert fluevalg for et gitt døgn / nå.
+   opts: {fcat, clarity, sunEl} (klarhet/vannføring/sollys hvis kjent) */
+function hatchAdvice(date, waterTemp, cloudFrac, rainMm, opts){
+  opts=opts||{};
   const hs=hatchState(date, waterTemp, cloudFrac, rainMm);
-  const doy=dayOfYear(date);
-  const cl=cloudFrac==null?60:cloudFrac;
-  const wet=rainMm>0.1, overcast=cl>=70;
+  const period=lesjaPeriod(dayOfYear(date));
+  const tags=lesjaTags(cloudFrac, rainMm, waterTemp, opts.fcat, opts.clarity, opts.sunEl);
+  const flies=rankLesjaFlies(period, tags);
+  const primary=LESJA_PERIOD_TXT[period];
 
-  let primary, flies=[], tactic;
+  let tactic;
+  if(tags.has("highWater"))         tactic="Høyere/litt farget vann: øk til større nymfe (PT, hareøre, steinflue) eller mørk streamer — ikke prøv å «blende» fisken med flashy mønstre.";
+  else if(tags.has("overcastRain")) tactic="Grått, kjølig eller lett regn: tenk Baetis/Aurivillii-emerger. Får du refusjon på dun, bytt til klekker — ikke til en annen art.";
+  else if(tags.has("clearLow"))     tactic="Lav og glassklar elv: gå ned i størrelse, tynne CDC-fluer og maur, lange fine fortommer (0,12–0,15 mm). Hold lav silhuett — fisken ser deg.";
+  else if(tags.has("evening"))      tactic="Plaskvak i kveldsluft: bytt raskt til eggleggende vårflue eller puppe nær land.";
+  else                              tactic="Klart, rolig vann og god tid for fisken — presenter slankt og dødt med fin fortom.";
 
-  if(doy>=160 && doy<=196){          // ~9.jun–15.jul: kjerneperioden
-    primary="Stor elvedøgnflue (Ephemerella aurivillii/aroni) er primærflua rundt St. Hans og 3–4 uker fram — «den viktigste døgnflua i rennende vann i Norge». Baetis rhodani («drittværsflua») går parallelt, særlig i regn.";
-    flies=[
-      ["Aurivillii-klekker / -dun","#12–#14 — nøkkelflue, henger lenge i filmen"],
-      ["Klinkhåmer, mørk brun","#12–#16 — klekker i strøm"],
-      ["Parachute Adams","#14–#16 — allround døgnflue"],
-      ["CDC Comparadun / F-fly","#14–#18 — baetis & små klekkere"],
-      ["Pheasant Tail nymfe","#14–#16 — under klekking / blindfiske"],
-      ["Superpuppan","#10–#14 — vårflue i skumringen"],
-    ];
-    tactic = overcast
-      ? "Fullt skydekke gir lavlys-fordel hele dagen — du kan fiske midt på dagen like gjerne som i gryningen. Fisk klekker/dun i filmen når du ser vak."
-      : "Klart vær: konsentrer innsatsen formiddag ved klekking og skumring. Hold lav silhuett i det klare vannet.";
-  } else if(doy>=197 && doy<=243){    // sensommer
-    primary="Vårfluer dominerer nå (Rhyacophila, Hydropsyche), med fortsatt baetis og Heptagenia (gul flatdøgnflue). Klekking ofte mot kveld/mørke.";
-    flies=[
-      ["Superpuppan, flere farger","#10–#14 — svømmepuppe mot land, stripefritt"],
-      ["CDC & Elk / March Brown","#12–#16 — voksen vårflue"],
-      ["Heptagenia-imitasjon, gul","#12–#14"],
-      ["Spent spinner","#14–#18 — spinnerfall i skumring"],
-      ["Goddard/Streaking Caddis","#12–#16"],
-    ];
-    tactic="Sett av skumringen til puppefiske og spinnerfall. Stor aure trekker nær land for å beite når lyset svinner.";
-  } else if(doy>=152 && doy<=159){    // tidlig juni
-    primary="Forsommer: baetis og fjærmygg er i gang, aurivillii på trappene. Avhenger sterkt av at snøsmeltingsflommen avtar og elva klarner.";
-    flies=[
-      ["Pheasant Tail / Hare's Ear nymfe","#12–#16 — tungt ved høy/farget vann"],
-      ["Woolly Bugger","#8–#10 — streamer i grumset/høyt vann"],
-      ["Baetis-klekker / CDC","#14–#16 når elva klarner"],
-      ["Griffiths Gnat","#16–#20 — fjærmygg morgen/kveld"],
-    ];
-    tactic="Ved høyt/farget vann: tunge nymfer og streamer langs kantene. Vent på klarvann for tørrflue.";
-  } else {
-    primary="Utenfor kjerneperioden. Fjærmygg klekker hele sesongen (morgen/kveld); baetis-høstgenerasjon små utover september.";
-    flies=[
-      ["Griffiths Gnat / myggklekker","#16–#20"],
-      ["Liten baetis CDC","#18–#20"],
-      ["Pheasant Tail nymfe","#14–#18"],
-    ];
-    tactic="Fisk fint og smått på stille partier morgen og kveld.";
-  }
-
-  // værbetinget tilleggsnotat
   let note="";
-  if(overcast && wet) note="Lærebok-forhold for baetis/aurivillii: fullt skydekke + lett regn + høy fukt. Forvent vak.";
-  else if(!overcast && !wet) note="Klart og tørt demper klekkingen — fisken blir sky i det krystallklare vannet. Lange, tynne fortommer (0,12–0,15 mm).";
-  else if(rainMm>=6) note="Kraftig regn kan grumse og heve vannet — følg med på vannføringen; bytt til tunge nymfer/streamer hvis det stiger.";
+  if(tags.has("warm")&&tags.has("clearLow")) note="Varmt og lavt: let etter aktiv fisk i litt kaldere, oksygenrike strømtunger og overganger.";
+  else if(tags.has("overcastRain")&&(period==="forsommer"||period==="host")) note="Lærebok-forhold for Baetis/Aurivillii: grått og fuktig. Forvent vak — vær klar med emergeren.";
 
-  return {state:hs, primary, flies, tactic, note};
+  return {state:hs, period, primary, flies, tactic, note};
 }
 
 /* ============================================================

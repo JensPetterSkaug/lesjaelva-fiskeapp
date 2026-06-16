@@ -28,6 +28,11 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:18p
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
 h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .sub{color:var(--mut);font-size:13.5px;margin:7px 0 0}
+.fishon-h1{display:none}
+body.tab-fishon .head-left .eyebrow,
+body.tab-fishon .head-left .main-h1,
+body.tab-fishon .head-left .sub{display:none}
+body.tab-fishon .head-left .fishon-h1{display:block}
 .head-right{display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:4px}
 .livedot{width:9px;height:9px;border-radius:50%;background:var(--mut2);box-shadow:0 0 0 0 rgba(79,182,168,0.5)}
 .livedot.ok{background:var(--teal);animation:pulse 2.4s infinite}
@@ -105,7 +110,52 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .hatchbox ul{margin:5px 0;padding-left:18px;color:var(--mut)}
 .hatchbox li{margin-bottom:3px}
 .hatchbox li b{color:var(--ink);font-weight:600}
+.fl-sz{font-family:var(--mono);font-size:10.5px;color:var(--teal);margin-left:2px}
 .hatchbox p{margin:6px 0;color:var(--mut)}
+
+/* ---------- FISHON – ved elva ---------- */
+#fishonSec>.panel{margin-bottom:14px}
+.fishon-hatch .fh-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.fishon-hatch .fh-head h3{margin:0}
+.fishon-hatch .htag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;padding:4px 11px;border-radius:20px;flex:0 0 auto}
+.fh-dom{margin:12px 0 4px;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.fh-sub{margin:16px 0 9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--mut)}
+.fly-top3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.fly-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column}
+.fly-img{position:relative;aspect-ratio:3/2;background:#f2f5f4;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.fly-img img{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;display:block}
+.fly-img .fly-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.45}
+.fly-img.noimg{background:linear-gradient(135deg,#16313a,#10262c)}
+.fly-meta{padding:9px 10px 11px}
+.fly-name{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.3}
+.fly-imit{font-size:11px;color:var(--teal);margin-top:4px;line-height:1.35}
+.fly-imit i{color:var(--mut)}
+.fly-desc{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.4}
+@media(max-width:560px){
+  .fly-top3{grid-template-columns:1fr}
+  .fly-card{flex-direction:row}
+  .fly-img{aspect-ratio:auto;width:108px;flex:0 0 108px}
+  .fly-meta{padding:10px 12px;align-self:center}
+}
+/* enkelt nymfekort: alltid full bredde, liggende layout */
+.fly-top3.fly-one{grid-template-columns:1fr}
+.fly-top3.fly-one .fly-card{flex-direction:row}
+.fly-top3.fly-one .fly-img{aspect-ratio:auto;width:108px;flex:0 0 108px}
+.fly-top3.fly-one .fly-meta{padding:10px 12px;align-self:center}
+.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.cond{display:flex;gap:10px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;padding:11px 12px}
+.cond-ic{font-size:18px;line-height:1;flex:0 0 auto;margin-top:1px}
+.cond-lb{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.cond-vl{font-size:15px;font-weight:600;color:var(--ink);margin-top:3px;line-height:1.25}
+.cond-vl .ar{color:var(--mut);font-weight:400}
+.cond-ht{font-size:10.5px;color:var(--mut);margin-top:3px}
+.cond-ht.good{color:var(--green)}
+.cond-ht.warn{color:var(--amber)}
+@media(max-width:380px){.cond-grid{grid-template-columns:1fr}}
 
 /* forecast strip */
 .fc-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:14px}
@@ -161,6 +211,15 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 
 /* dagsrapport – time for time */
 .reportsec{margin-bottom:14px}
+.reportsec .fc-head{align-items:flex-start;flex-wrap:nowrap;gap:10px}
+.reportsec .fc-head h3{flex:1 1 auto;min-width:0}
+.rp-info-btn{font-size:15px;flex:0 0 auto}
+.rp-info-btn[aria-expanded="true"]{border-color:var(--teal-dim);color:var(--teal)}
+.rp-infopop{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:13px 15px;margin-bottom:14px}
+.rp-infopop[hidden]{display:none}
+.rp-infopop .fc-note{margin:0 0 12px;max-width:none}
+.rp-infopop .rp-weights{margin-bottom:0}
+.rp-summary{margin-top:0;margin-bottom:13px}
 .rp-weights{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px;font-size:11.5px;color:var(--mut)}
 .rp-wt{display:inline-flex;align-items:center;gap:7px}
 .rp-wt b{color:var(--ink);font-family:var(--mono);font-size:11px}

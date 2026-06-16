@@ -15,8 +15,9 @@
   <header>
     <div class="head-left">
       <p class="eyebrow">Elvefiske · live prognose · NVE Sildre + MET</p>
-      <h1>Lesjaelva — øvre Gudbrandsdalslågen, sone 7</h1>
+      <h1 class="main-h1">Lesjaelva — øvre Gudbrandsdalslågen, sone 7</h1>
       <p class="sub" id="stationSub">Stasjon 2.346.0 Lesjaverk · laster …</p>
+      <h1 class="fishon-h1">Fluevalg og bestefiskested i Lesjaelva</h1>
     </div>
     <div class="head-right">
       <span class="livedot" id="liveDot" title="Datastatus"></span>
@@ -46,6 +47,9 @@
   </section>
 
   <div class="gate" id="gate"></div>
+
+  <!-- FISHON – ved elva (kun mobil-fane) -->
+  <div id="fishonSec"></div>
 
   <!-- TO HOVEDSPALTER -->
   <div class="cols" id="colsRow">
@@ -86,11 +90,14 @@
   <section class="panel reportsec" id="reportsec">
     <div class="fc-head">
       <h3>Dagsrapport — time for time <span class="muted" id="reportWhen"></span></h3>
-      <p class="muted fc-note">Beste fiskeplass blant elvepunktene time for time. Modellen veier solhøyde/lys, terrengskygge på plassen, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet. Klikk en dag i prognosen for en annen dato (krever MET-timesprognose, ~2–3 døgn fram). Scroll i tabellen for hele døgnet (00–23). Ingen plass foreslås mer enn 4 timer på rad — da byttes det til nest beste plass («variasjon») for å spre fisket.</p>
+      <button class="iconbtn rp-info-btn" id="reportInfoBtn" title="Om indeksen" aria-label="Om indeksen" aria-expanded="false">ℹ</button>
     </div>
-    <div class="rp-weights" id="reportWeights"></div>
+    <div class="rp-infopop" id="reportInfoPop" hidden>
+      <p class="muted fc-note">Beste fiskeplass blant elvepunktene time for time. Modellen veier solhøyde/lys, terrengskygge på plassen, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet. Klikk en dag i prognosen for en annen dato (krever MET-timesprognose, ~2–3 døgn fram). Tabellen viser døgnet fra kl 06 til 23. Ingen plass foreslås mer enn 4 timer på rad — da byttes det til nest beste plass («variasjon») for å spre fisket.</p>
+      <div class="rp-weights" id="reportWeights"></div>
+    </div>
+    <div class="chartcap rp-summary" id="reportCap"></div>
     <div id="reportBody"><div class="empty">Laster dagsrapport …</div></div>
-    <div class="chartcap" id="reportCap"></div>
   </section>
 
   <!-- DOMBÅS VANNSTAND/VANNFØRING + PROGNOSE -->

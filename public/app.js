@@ -343,8 +343,9 @@ function buildDays(){
       hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat,
       wind:windCat(now.wind), stab:"stable", season:seasonFromTemp(wtNow)
     };
+    const sunElNow = solarPosition(new Date(), STATE.cfg.lat, STATE.cfg.lon).elevation;
     STATE.now={ state:st, idx:computeIndex(st), wtNow, wtMeasured, fcat, clarity, windDir:now.windDir,
-                hatch:hatchAdvice(new Date(), wtNow, now.cloud, now.precip), now };
+                hatch:hatchAdvice(new Date(), wtNow, now.cloud, now.precip, {fcat, clarity, sunEl:sunElNow}), now };
   }
 }
 function flowLevel0(){ return STATE.discharge ? percentileRank(STATE.discharge.dist, STATE.discharge.latest) : 0.55; }
@@ -471,15 +472,122 @@ function renderBreakdown(idx, label){
 function renderHatch(sel){
   let adv, when;
   if(sel==null && STATE.now){ adv=STATE.now.hatch; when="nå"; }
-  else { const d=STATE.days[sel==null?0:sel]; adv=hatchAdvice(d.date, d.wt, d.md.cloud, d.precip); when=dayLabel(d.date); }
+  else { const d=STATE.days[sel==null?0:sel]; adv=hatchAdvice(d.date, d.wt, d.md.cloud, d.precip, {fcat:d.fcat, clarity:d.clarity, sunEl:null}); when=dayLabel(d.date); }
   $("hatchWhen").textContent="· "+when;
-  const flies=adv.flies.map(f=>`<li><b>${f[0]}</b> — ${f[1]}</li>`).join("");
+  const flies=adv.flies.slice(0,7).map(f=>`<li><b>${f.name}</b> <span class="fl-sz">${f.size}</span> — ${f.im} · ${f.tip}</li>`).join("");
   $("hatchBox").innerHTML=`
     <span class="htag ${adv.state.cat}">${HATCH_LABEL[adv.state.cat]}</span>
     <p>${adv.primary}</p>
-    <h4>Flueforslag</h4><ul>${flies}</ul>
+    <h4>Anbefalte fluer for Lesjaelva nå</h4><ul>${flies}</ul>
     <h4>Taktikk</h4><p>${adv.tactic}</p>
     ${adv.note?`<p style="color:var(--teal)">${adv.note}</p>`:""}`;
+}
+
+/* ============================================================
+   FISHON – «ved elva»-modus (kun mobil-fane)
+   ============================================================ */
+/* fluenavn -> bildefil i public/flies/ (slug). null = ingen match */
+const FLY_SLUGS=[
+  [/aurivillii/i,"aurivillii-klekker"],
+  [/klinkh[åa]mer|klinkhammer/i,"klinkhamer"],
+  [/cdc caddis/i,"cdc-caddis"],
+  [/comparadun|no-hackle|cdc baetis/i,"cdc-comparadun"],
+  [/soft hackle p|pheasant tail|hare'?s ear|haregøre|hareøre/i,"pheasant-tail"],
+  [/sparkle pupa|superpuppan/i,"superpuppan"],
+  [/\bmaur\b|\bant\b/i,"maur"],
+  [/ignita/i,"ignita"],
+  [/shuttlecock/i,"shuttlecock"],
+  [/zebra midge|mygg|myggnymfe/i,"midge"],
+  [/steinflue|montana/i,"steinflue"],
+  [/brun'?s caddis/i,"bruns-caddis"],
+  [/bibio/i,"bibio"],
+  [/olive jig/i,"olive-jig"],
+  [/woolly bugger/i,"woolly-bugger"],
+  [/parachute adams|\badams\b/i,"parachute-adams"],
+];
+function flyImage(name){ for(const [re,s] of FLY_SLUGS){ if(re.test(name)) return "flies/"+s+".jpg"; } return null; }
+
+/* ett fluekort (bilde + navn + imitasjon/latin + størrelse/type/tips).
+   Vises selv uten bildefil — da med nøytral plassholder. */
+function flyCardHTML(f){
+  const img=flyImage(f.name);
+  const lat=(f.lat&&f.lat!=="—")?` · <i>${f.lat}</i>`:"";
+  return `<div class="fly-card">
+    <div class="fly-img${img?"":" noimg"}"><span class="fly-ph">🪰</span>${img?`<img src="${img}" alt="${f.name}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove();">`:""}</div>
+    <div class="fly-meta"><div class="fly-name">${f.name}</div>
+      <div class="fly-imit">Imiterer: ${f.im}${lat}</div>
+      <div class="fly-desc"><b>${f.size}</b> · ${f.type} — ${f.tip}</div></div>
+  </div>`;
+}
+
+/* beste vindu (kl x–y) for i dag basert på time-for-time-modellen */
+function bestWindowToday(){
+  const rep=buildDayReport(0);
+  if(!rep||!rep.rows||!rep.rows.length) return null;
+  const peak=Math.max(...rep.rows.map(r=>r.best.r.score));
+  const hs=rep.rows.filter(r=>r.best.r.score>=peak-5).map(r=>r.h.hour);
+  if(!hs.length) return null;
+  return {txt:`kl ${String(Math.min(...hs)).padStart(2,"0")}–${String(Math.max(...hs)+1).padStart(2,"0")}`, peak};
+}
+/* beste le-plass akkurat nå (for gjeldende vindretning) */
+function bestLeeNow(){
+  if(!(STATE.terrain&&STATE.terrain.length&&STATE.now&&STATE.now.windDir!=null)) return null;
+  const best=STATE.terrain.map(p=>({p,s:shelterDeg(p,STATE.now.windDir)})).sort((a,b)=>b.s-a.s)[0];
+  return best?{txt:`${best.p.navn||leePlace(best.p.lon)} ${Math.round(best.s)}°`}:null;
+}
+function condCell(icon,label,val,hint,hintCls){
+  return `<div class="cond"><div class="cond-ic">${icon}</div><div class="cond-tx">`+
+    `<div class="cond-lb">${label}</div><div class="cond-vl">${val}</div>`+
+    `${hint?`<div class="cond-ht ${hintCls||""}">${hint}</div>`:""}</div></div>`;
+}
+function renderFishon(){
+  const host=$("fishonSec"); if(!host) return;
+  const N=STATE.now;
+  if(!N){ host.innerHTML=`<section class="panel"><div class="empty">Venter på sanntidsdata …</div></section>`; return; }
+  const adv=N.hatch, w=N.now, cat=adv.state.cat;
+  const dominant=adv.primary||"";
+
+  // topp 3 tørrfluer + beste nymfe (rangert som i flueråd-lista)
+  const dryCards=adv.flies.filter(f=>f.type==="Tørrflue").slice(0,3).map(flyCardHTML).join("");
+  const nymphCards=adv.flies.filter(f=>f.type==="Nymfe").slice(0,1).map(flyCardHTML).join("");
+
+  // forhold nå
+  const wt=N.wtNow, wtA=STATE.watertemp?trendArrow(STATE.watertemp.trend24,0.2):"";
+  const wtHint = wt==null?"":(wt>=8&&wt<=15?"insektvennlig":(wt>15?"varmt – fisk morgen/kveld":(wt<5?"kaldt – treg fisk":"kjølig")));
+  const flowA=STATE.discharge?trendArrow(STATE.discharge.trend24,0.3):"";
+  const pCat=pressCat(w.press,w.dPress), pArrow=trendArrow(w.dPress,0.8);
+  const pHint = w.dPress<-0.8?"fallende = ofte best":(pCat==="bluebird"?"klart etter front":"");
+  const windHint = w.wind>=6?"kraftig – søk le":(w.wind>=3?"litt vind":"rolig");
+  const bw=bestWindowToday(), le=bestLeeNow();
+  const cond=[
+    condCell("💧","Vanntemp",`${fmt1(wt)}° <span class=\"ar\">${wtA}</span>`,wtHint,wt>15?"warn":""),
+    condCell("🌊","Vannføring",`${FLOW_LABEL[N.fcat]||"–"} <span class=\"ar\">${flowA}</span>`,CLAR_LABEL[N.clarity]||""),
+    condCell("🔵","Lufttrykk",`${PRESS_LABEL[pCat]} <span class=\"ar\">${pArrow}</span>`,pHint,pHint.includes("best")?"good":""),
+    condCell("💨","Vind",`${fmt1(w.wind)} m/s${w.windDir!=null?" "+degToCompass(w.windDir):""}`,windHint,w.wind>=6?"warn":""),
+    condCell("⏱️","Beste vindu i dag",bw?bw.txt:"–","topp time-for-time","good"),
+    condCell("🛡️","Beste le nå",le?le.txt:"–","se kart nederst"),
+  ].join("");
+
+  const flies=adv.flies.slice(0,8).map(f=>`<li><b>${f.name}</b> <span class="fl-sz">${f.size}</span> — ${f.im} · ${f.tip}</li>`).join("");
+  host.innerHTML=`
+    <section class="panel fishon-hatch">
+      <div class="fh-head"><h3>Hva klekker nå <span class="muted">· ved elva</span></h3>
+        <span class="htag ${cat}">${HATCH_LABEL[cat]}</span></div>
+      <p class="fh-dom">${dominant}</p>
+      <h4 class="fh-sub">Topp tre tørrfluer nå</h4>
+      <div class="fly-top3">${dryCards}</div>
+      ${nymphCards?`<h4 class="fh-sub">Topp nymfevalg</h4><div class="fly-top3 fly-one">${nymphCards}</div>`:""}
+    </section>
+    <section class="panel fishon-cond">
+      <h3>Forhold nå</h3>
+      <div class="cond-grid">${cond}</div>
+    </section>
+    <section class="panel fishon-advice hatchbox">
+      <h3>Klekking &amp; flueråd</h3>
+      <h4>Anbefalte fluer for Lesjaelva nå</h4><ul>${flies}</ul>
+      <h4>Taktikk</h4><p>${adv.tactic}</p>
+      ${adv.note?`<p style="color:var(--teal)">${adv.note}</p>`:""}
+    </section>`;
 }
 
 function dayLabel(d){ return `${DOW[d.getDay()]} ${d.getDate()}. ${MON[d.getMonth()]}`; }
@@ -550,11 +658,11 @@ async function refresh(){
     await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
     buildDays();
     STATE.selected=null;
-    renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow();
+    renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow(); renderFishon();
     logForecast();
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
-    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderTomorrow(); }).catch(()=>{});
+    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderTomorrow(); renderFishon(); }).catch(()=>{});
     applyTabs(STATE.tab||"prognose");
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
@@ -983,6 +1091,7 @@ function hoursForDay(dayIndex){
   for(let i=0;i<ts.length;i++){
     const e=ts[i], d=new Date(e.time);
     if(osloDateKey(d)!==day.key) continue;
+    if(osloHour(d)<6) continue;          // dagsrapport: statisk vindu kl 06–23
     const det=e.data.instant.details||{};
     const n1=e.data.next_1_hours, n6=e.data.next_6_hours;
     let precip=0;
@@ -1112,8 +1221,7 @@ function renderDailyReport(){
       ? ` <span class="muted">Merk: portvokter aktiv deler av dagen (varmt vann/flom) — indeksen er nedjustert da.</span>` : "";
     capEl.innerHTML=`Beste vindu i dag: <b style="color:${pvc}">${window}</b> (topp ${peak} – ${pvt}), `+
       `sterkest rundt kl ${String(peakRow.h.hour).padStart(2,"0")} ved <b>${peakRow.best.p.navn||leePlace(peakRow.best.p.lon)}</b>. `+
-      `Oftest beste plass gjennom dagen: <b>${topPlace[0]}</b> (${topPlace[1]} av ${rows.length} timer). `+
-      `Modellen veier sol/lys, terrengskygge, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet for hvert av ${(STATE.terrain||[]).length} elvepunkt, time for time.`+gateTxt;
+      `Oftest beste plass gjennom dagen: <b>${topPlace[0]}</b> (${topPlace[1]} av ${rows.length} timer).`+gateTxt;
   }
   renderReportWeights();
 }
@@ -1233,15 +1341,18 @@ async function saveObs(){
 const HOME_BLOCKS=["heroSec","gate","colsRow","forecast","mapsec","reportsec","dombasSec","pressSec","logsec"];
 const TAB_BLOCKS={
   dagsrapport:["reportsec"],
-  fishon:["heroSec","gate","colsRow","mapsec"],
+  fishon:["fishonSec","mapsec"],
   fiskerapport:["logsec"],
   imorgen:["tomorrowSec"]
 };
+// blokker som aldri vises på desktop / hjemmefanen (kun egne mobil-faner)
+const TAB_ONLY=["tomorrowSec","fishonSec"];
 function applyTabs(active){
   STATE.tab=active;
-  const all=HOME_BLOCKS.concat("tomorrowSec");
+  const all=HOME_BLOCKS.concat(TAB_ONLY);
   const mobile=window.matchMedia("(max-width:700px)").matches;
-  if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", id==="tomorrowSec"); }); return; }
+  document.body.classList.toggle("tab-fishon", mobile && active==="fishon");
+  if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", TAB_ONLY.includes(id)); }); return; }
   const show = active==="prognose" ? HOME_BLOCKS : (TAB_BLOCKS[active]||HOME_BLOCKS);
   all.forEach(id=>{ const e=$(id); if(e) e.classList.toggle("tab-hidden", !show.includes(id)); });
   document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===active));
@@ -1272,12 +1383,18 @@ function renderTomorrow(){
   </div>`;
 }
 document.querySelectorAll(".tabbar button").forEach(b=>{
-  b.onclick=()=>{ const t=b.dataset.tab; if(t==="imorgen") renderTomorrow(); applyTabs(t); window.scrollTo(0,0); };
+  b.onclick=()=>{ const t=b.dataset.tab; if(t==="imorgen") renderTomorrow(); if(t==="fishon") renderFishon(); applyTabs(t); window.scrollTo(0,0); };
 });
 window.addEventListener("resize",()=>applyTabs(STATE.tab||"prognose"));
 applyTabs("prognose");
 
 $("refreshBtn").onclick=refresh;
+if($("reportInfoBtn")) $("reportInfoBtn").onclick=()=>{
+  const pop=$("reportInfoPop"), btn=$("reportInfoBtn");
+  const open=pop.hasAttribute("hidden");
+  if(open){ pop.removeAttribute("hidden"); } else { pop.setAttribute("hidden",""); }
+  btn.setAttribute("aria-expanded", open?"true":"false");
+};
 $("settingsBtn").onclick=openModal;
 $("saveObs").onclick=saveObs;
 $("ob_dato").value=osloDateKey(new Date());
