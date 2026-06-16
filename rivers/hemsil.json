@@ -10,20 +10,32 @@
   "altitude": 620,
   "station": "12.551.0",
   "stations": [
-    { "id": "12.551.0", "label": "Hemsil v/Hemsedal sentrum" }
+    {
+      "id": "12.551.0",
+      "label": "Hemsil v/Hemsedal sentrum"
+    }
   ],
   "weatherPoints": [
-    { "label": "Hemsedal", "lat": 60.8653, "lon": 8.5206, "altitude": 620 },
-    { "label": "Tuv", "lat": 60.9180, "lon": 8.6520, "altitude": 560 }
+    {
+      "label": "Hemsedal",
+      "lat": 60.8653,
+      "lon": 8.5206,
+      "altitude": 620
+    },
+    {
+      "label": "Tuv",
+      "lat": 60.918,
+      "lon": 8.652,
+      "altitude": 560
+    }
   ],
   "secondary": null,
   "leeZones": [],
   "terrainFile": "terrain/hemsil.json",
-  "flyArchetype": "kald-hoyfjellselv",
+  "flyArchetype": "hemsil",
   "_todo": [
     "Primær temp-stasjon 12.551.0 (Hemsil v/Hemsedal sentrum) — kun vanntemp, ingen vannføring i NVE. Indeksen kjører på temp + vær.",
     "Sekundær vannstandsgraf er av (secondary=null) — Hemsil er regulert; vurder Eikredammen (12.181.0) som referanse hvis ønskelig.",
-    "Terrengpunktene i terrain/hemsil.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser.",
-    "Egen flueguide for Hemsil kan erstatte arketypen kald-hoyfjellselv."
+    "Terrengpunktene i terrain/hemsil.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
   ]
 }

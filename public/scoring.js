@@ -218,10 +218,47 @@ const LESJA_FLIES=[
   {name:"Bibio",type:"Terrestrial",size:"#10–12",im:"Bibio / hårmygg",lat:"Bibio",prio:17,seasons:["sensommer"],tags:["clearLow"],tip:"Sensommer/fjelldager med riktig insektbilde; dødt eller lett drivende."},
   {name:"Black Woolly Bugger",type:"Streamer",size:"#8–10",im:"Byttefisk / stor larve",lat:"—",prio:18,seasons:["tidlig"],tags:["highWater"],tip:"Større silhuett ved høy vannføring eller skumring; fiskes rolig, ikke aggressivt."},
 ];
-/* flue-arketyper: elve-profilen velger arketype (flyArchetype).
-   Nye arketyper (skogselv, stor lavlandselv …) legges til her. */
+/* --- Hemsil (Hemsedal): teknisk, sky ørret i klart fjellvann; Aurivillii-event i juni.
+   Deler Lesja-flueboksen (samme baetis/aurivillii/vårflue-DNA), egen ørret-tekst. --- */
+const HEMSIL_PERIOD_TXT={
+  tidlig:"Tidlig sesong i Hemsil: kaldt, klart fjellvann. Start under overflaten med nymfe/emerger — den ville Hemsil-ørreten er sky, så bruk lang, fin fortom og hold lav profil.",
+  forsommer:"Forsommer: Baetis er i gang, og i siste halvdel av juni starter Aurivillii-klekkingen som henter den store ørreten opp fra dype høler — gullperioden for tørrflue. Let etter vakende fisk.",
+  hoysommer:"Høysommer: Aurivillii og vårfluer. Klart, teknisk vann — finn vakende fisk og presenter lavt og dødt med lang fortom (0,12–0,15 mm).",
+  sensommer:"Sensommer: små døgnfluer, vårfluer og landinsekter. Gå ned i størrelse på lavt, klart vann — storørreten er kresen.",
+  host:"Tidlig høst: små olivener, mygg og nymfer. Fisk fint og presist mellom vakene; bytt raskt til emerger når det vaker.",
+  utenfor:"Utenfor sesong. Sjekk lokale regler (Hemsedal Fiskeforening). Smått og fint hvis du fisker."
+};
+/* --- Sel / Selsvollene (sone 5): stor, rolig, glassklar Lågen; storharr (>40 cm) + ørret.
+   Harr-vektet boks: smått teller mest (mygg, små døgnfluer, maur). --- */
+const SEL_PERIOD_TXT={
+  tidlig:"Tidlig sesong på Sel (Selsvollene): klart, stilleflytende Lågen-vann. Nymfer og små olivener — storharren tar smått. (Fang-og-slipp på ørret til 21. mai.)",
+  forsommer:"Forsommer: Baetis og fjærmygg, Aurivillii fra siste halvdel av juni. Stor harr og ørret tar små tørrfluer og klekkere i det glassklare, rolige vannet.",
+  hoysommer:"Høysommer: vårfluer, små døgnfluer og landinsekter. Storharren (>40 cm) er kresen — tenk smått: mygg, små CDC, maur og spinner.",
+  sensommer:"Sensommer: maur, mygg og små olivener er gull for harr på lavt, klart vann. Gå langt ned i størrelse (#16–20).",
+  host:"Tidlig høst: små olivener, mygg og nymfer. Fint og smått på de rolige glidene.",
+  utenfor:"Utenfor sesong (sone 5 Selsvollene). Sjekk regler hos Lågen Fiskeelv. Smått og fint hvis du fisker."
+};
+const SEL_FLIES=[
+  {name:"CDC Comparadun Olive",type:"Tørrflue",size:"#16–18",im:"Liten døgnflue (baetis)",lat:"Baetis rhodani",prio:1,seasons:["tidlig","forsommer","hoysommer","sensommer","host"],tags:["clearLow"],allRound:true,tip:"Liten oliven dun — storharrens favoritt i glassklart, rolig vann; fiskes helt dødt."},
+  {name:"Griffiths Gnat / myggklynge",type:"Tørrflue",size:"#16–20",im:"Fjærmygg (klynge)",lat:"Chironomidae",prio:2,seasons:["all"],tags:["clearLow"],allRound:true,tip:"Mygg og klynger — dødelig på kresen harr; fiskes dødt på stille glid."},
+  {name:"Pheasant Tail Nymph",type:"Nymfe",size:"#14–18",im:"Døgnflue-nymfe",lat:"Baetis / Ephemerella",prio:3,seasons:["all"],tags:["highWater"],allRound:true,tip:"Allround nymfe for harr og ørret; rolig, kontrollert drift."},
+  {name:"Svart / rød maur",type:"Terrestrial",size:"#14–18",im:"Maur",lat:"Formicidae",prio:4,seasons:["hoysommer","sensommer"],tags:["clearLow"],tip:"Landinsekt — gull for harr på lavt, klart vann; fiskes dødt eller svært rolig."},
+  {name:"Zebra Midge / svart myggnymfe",type:"Nymfe",size:"#16–20",im:"Fjærmygg-puppe",lat:"Chironomidae",prio:5,seasons:["all"],tags:["clearLow"],allRound:true,tip:"Smått og sakte — sterk på storharr i roligere vann."},
+  {name:"CDC Caddis",type:"Tørrflue",size:"#14–16",im:"Voksen vårflue",lat:"Trichoptera",prio:6,seasons:["forsommer","hoysommer","sensommer","host"],tags:["clearLow","evening"],tip:"Blankt, stilleflytende vann; fiskes dødt eller med bittesmå twitch."},
+  {name:"Klinkhammer Olive",type:"Emerger",size:"#14–16",im:"Klekkende døgnflue",lat:"Baetis / E. aurivillii",prio:7,seasons:["tidlig","forsommer","hoysommer","sensommer","host"],tags:["overcastRain","clearLow"],tip:"Når fisken bare viser snute; fiskes lavt og dødt i filmen."},
+  {name:"Ignita-dun / spinner",type:"Tørrflue",size:"#16–18",im:"Liten døgnflue",lat:"Ephemerella ignita",prio:8,seasons:["hoysommer","sensommer","host"],tags:["clearLow","evening"],tip:"Smått og fint; dødt eller som spent spinner i varme kvelder."},
+  {name:"Aurivillii-emerger / -dun",type:"Tørrflue",size:"#12–14",im:"Stor elvedøgnflue",lat:"Ephemerella aurivillii",prio:9,seasons:["forsommer","hoysommer"],tags:["overcastRain"],tip:"Fra siste halvdel av juni — henter opp stor fisk; fiskes presist."},
+  {name:"Rusty Spinner",type:"Tørrflue",size:"#16–18",im:"Døgnflue (utgytt)",lat:"Ephemeroptera",prio:10,seasons:["hoysommer","sensommer"],tags:["evening"],tip:"Spinnerfall i stille kveldsluft; fiskes helt dødt."},
+  {name:"Lys hareøre-/olivennymfe",type:"Nymfe",size:"#14–16",im:"Døgnflue-/vårflue-nymfe",lat:"Ephemeroptera",prio:11,seasons:["all"],tags:["highWater"],allRound:true,tip:"Generell nymfeprofil; fiskes dødt."},
+  {name:"Soft Hackle PT",type:"Våtflue",size:"#14–16",im:"Klekkende døgnflue",lat:"Baetis",prio:12,seasons:["all"],tags:["overcastRain"],tip:"Når fisken tar rett under filmen; liten skrå-/nedstrømsdrift."},
+  {name:"Sparkle Pupa / Superpuppan",type:"Caddis-puppe",size:"#14–16",im:"Vårfluepuppe",lat:"Trichoptera",prio:13,seasons:["forsommer","hoysommer","sensommer"],tags:["evening","highWater"],tip:"Urolig vårflueaktivitet; drift med korte løft mot slutten."},
+  {name:"Steinfluenymfe / Montana",type:"Nymfe",size:"#10–12",im:"Steinflue-nymfe",lat:"Plecoptera",prio:14,seasons:["tidlig"],tags:["highWater"],tip:"Tidlig sesong/høy vannføring; fiskes som søkeflue."},
+];
+/* flue-arketyper: elve-profilen velger arketype (flyArchetype). */
 const FLY_ARCHETYPES={
-  "kald-hoyfjellselv": { flies: LESJA_FLIES, periodTxt: LESJA_PERIOD_TXT },
+  "kald-hoyfjellselv": { flies: LESJA_FLIES,  periodTxt: LESJA_PERIOD_TXT },
+  "hemsil":            { flies: LESJA_FLIES,  periodTxt: HEMSIL_PERIOD_TXT },
+  "sel-grayling":      { flies: SEL_FLIES,    periodTxt: SEL_PERIOD_TXT },
 };
 function flyArchetype(id){ return FLY_ARCHETYPES[id] || FLY_ARCHETYPES["kald-hoyfjellselv"]; }
 /* gjeldende forhold -> sett av aktive «tags» */

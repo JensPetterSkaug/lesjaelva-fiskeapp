@@ -10,12 +10,28 @@
   "altitude": 286,
   "station": "2.1238.0",
   "stations": [
-    { "id": "2.1238.0", "label": "Lågen ovf. Otta" },
-    { "id": "2.150.0", "label": "Lalm (Otta)" }
+    {
+      "id": "2.1238.0",
+      "label": "Lågen ovf. Otta"
+    },
+    {
+      "id": "2.150.0",
+      "label": "Lalm (Otta)"
+    }
   ],
   "weatherPoints": [
-    { "label": "Otta", "lat": 61.7717, "lon": 9.5407, "altitude": 286 },
-    { "label": "Sel", "lat": 61.8415, "lon": 9.4106, "altitude": 300 }
+    {
+      "label": "Otta",
+      "lat": 61.7717,
+      "lon": 9.5407,
+      "altitude": 286
+    },
+    {
+      "label": "Sel",
+      "lat": 61.8415,
+      "lon": 9.4106,
+      "altitude": 300
+    }
   ],
   "secondary": {
     "label": "Lalm",
@@ -27,11 +43,10 @@
   },
   "leeZones": [],
   "terrainFile": "terrain/sel.json",
-  "flyArchetype": "kald-hoyfjellselv",
+  "flyArchetype": "sel-grayling",
   "_todo": [
     "Verifiser at primær temp-stasjon 2.1238.0 (Lågen ovf. Otta) treffer fiskesonen din; alternativ: 2.653.0.",
     "Vannføring: ingen co-lokalisert måler på Lågen v/Otta — Lalm (2.150.0, Otta-grenen) brukes som referanse. Verifiser.",
-    "Terrengpunktene i terrain/sel.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser.",
-    "Egen flueguide for Sel kan erstatte arketypen kald-hoyfjellselv."
+    "Terrengpunktene i terrain/sel.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
   ]
 }
