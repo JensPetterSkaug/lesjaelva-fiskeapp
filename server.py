@@ -99,12 +99,57 @@ _CACHE = {}
 CACHE_TTL = 600  # sekunder
 
 
-def load_config():
-    cfg = dict(DEFAULTS)
+# ---------- elve-profiler (multi-tenant) ----------
+RIVERS_DIR = os.path.join(ROOT, "rivers")
+SINGLE_RIVER = os.environ.get("RIVER")          # satt => single-river-deploy
+DEFAULT_RIVER = SINGLE_RIVER or "lesja"
+# hemmelige felt som leses fra config.json (resten kommer fra elve-profilen)
+SECRET_KEYS = ("nveApiKey", "frostClientId", "frostClientSecret",
+               "supabaseUrl", "supabaseKey", "clarityOverride", "tempOverride")
+
+
+def river_exists(rid):
+    return bool(rid) and rid.isalnum() and os.path.isfile(os.path.join(RIVERS_DIR, rid + ".json"))
+
+
+def load_river(rid):
+    with open(os.path.join(RIVERS_DIR, rid + ".json"), "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def list_rivers():
+    out = []
+    if os.path.isdir(RIVERS_DIR):
+        for fn in sorted(os.listdir(RIVERS_DIR)):
+            if fn.endswith(".json"):
+                try:
+                    p = load_river(fn[:-5])
+                    out.append({"id": fn[:-5], "name": p.get("name"),
+                                "shortName": p.get("shortName"), "region": p.get("region")})
+                except Exception:
+                    pass
+    return out
+
+
+def load_config(river=None):
+    rid = SINGLE_RIVER or river or DEFAULT_RIVER
+    if not river_exists(rid):
+        rid = DEFAULT_RIVER if river_exists(DEFAULT_RIVER) else rid
+    cfg = dict(DEFAULTS)                          # fallback-struktur
+    if river_exists(rid):
+        try:
+            cfg.update(load_river(rid))
+        except Exception as e:
+            print("[advarsel] kunne ikke lese elve-profil:", rid, e, file=sys.stderr)
+    cfg["id"] = rid
+    # hemmeligheter/overrides fra config.json (gitignorert)
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                cfg.update(json.load(f))
+                local = json.load(f)
+            for k in SECRET_KEYS:
+                if k in local:
+                    cfg[k] = local[k]
         except Exception as e:
             print("[advarsel] kunne ikke lese config.json:", e, file=sys.stderr)
     # env-nøkkel vinner hvis satt
@@ -509,7 +554,10 @@ class Handler(BaseHTTPRequestHandler):
         qs = urllib.parse.parse_qs(parsed.query)
 
         if path == "/api/config":
-            return self.handle_get_config()
+            return self.handle_get_config((qs.get("river") or [None])[0])
+        if path == "/api/rivers":
+            return self.send_json({"rivers": list_rivers(), "default": DEFAULT_RIVER,
+                                   "multiTenant": SINGLE_RIVER is None})
         if path == "/api/met":
             return self.handle_met(qs)
         if path == "/api/pressure":
@@ -561,6 +609,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return self.wfile.write(body)
 
+        # ---- multi-tenant ruting ----
+        seg = path.strip("/")
+        if path == "/" or path == "":
+            return self.serve_static("/index.html" if SINGLE_RIVER else "/landing.html")
+        # /<id> (uten punktum/skråstrek) som matcher en elve-profil -> appen
+        if "/" not in seg and "." not in seg and river_exists(seg):
+            return self.serve_static("/index.html")
+
         return self.serve_static(path)
 
     def do_POST(self):
@@ -602,12 +658,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"ok": True})
 
     # ---- config ----
-    def handle_get_config(self):
-        cfg = load_config()
+    def handle_get_config(self, river=None):
+        cfg = load_config(river)
         self.send_json({
             "hasKey": bool(cfg.get("nveApiKey")),
             "hasFrost": bool(cfg.get("frostClientId") or os.environ.get("FROST_CLIENT_ID")),
             "hasSupabase": sb_enabled(),
+            "id": cfg.get("id"),
+            "name": cfg.get("name"),
+            "shortName": cfg.get("shortName"),
+            "fishonTitle": cfg.get("fishonTitle"),
+            "eyebrow": cfg.get("eyebrow"),
+            "region": cfg.get("region"),
             "station": cfg.get("station"),
             "stations": cfg.get("stations"),
             "lat": cfg.get("lat"),
@@ -616,6 +678,11 @@ class Handler(BaseHTTPRequestHandler):
             "clarityOverride": cfg.get("clarityOverride"),
             "tempOverride": cfg.get("tempOverride"),
             "weatherPoints": cfg.get("weatherPoints"),
+            "secondary": cfg.get("secondary"),
+            "leeZones": cfg.get("leeZones"),
+            "terrainFile": cfg.get("terrainFile"),
+            "flyArchetype": cfg.get("flyArchetype"),
+            "multiTenant": SINGLE_RIVER is None,
             "contact": CONTACT,
         })
 

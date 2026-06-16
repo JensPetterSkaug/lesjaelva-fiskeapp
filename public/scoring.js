@@ -187,14 +187,14 @@ function lesjaPeriod(doy){
   return "utenfor";
 }
 const LESJA_PERIOD_TXT={
-  tidlig:"Tidlig sesong på sone 7: kaldt til kjølig vann (ofte 7–11 °C), gjerne preget av snøsmelting. Tenk nymfer, pupper og små olivener — start ofte under overflaten med PT eller en oliven emerger.",
-  forsommer:"Forsommer: sone 7 blir mer lesbar som tørrflueelv. Små oliven døgnfluer (Baetis) først, deretter mellomstore (Aurivillii). På grå/regnfulle dager slår klekkeren ofte dunen.",
+  tidlig:"Tidlig sesong: kaldt til kjølig vann (ofte 7–11 °C), gjerne preget av snøsmelting. Tenk nymfer, pupper og små olivener — start ofte under overflaten med PT eller en oliven emerger.",
+  forsommer:"Forsommer: elva blir mer lesbar som tørrflueelv. Små oliven døgnfluer (Baetis) først, deretter mellomstore (Aurivillii). På grå/regnfulle dager slår klekkeren ofte dunen.",
   hoysommer:"Høysommer: vårfluene blir stadig viktigere. CDC Caddis er sterk i blankt, stilleflytende vann; Brun's Caddis når eggleggere gir plaskvak. Klart, rolig vann — fisk gjerne på synlig fisk.",
   sensommer:"Sensommer: landinsekter og små, diskrete mønstre teller mest — maur, små CDC-vårfluer, ignita/spinner og mygg. Lavt og klart vann: gå ned i størrelse, ikke opp.",
   host:"Tidlig høst: kort, men god periode for små olivener, mygg og nymfer (Baetis-høstgenerasjon, Ignita). Fisk gjerne subsurface mellom vakene og bytt raskt til emerger når det vaker.",
-  utenfor:"Utenfor ordinær sesong (1. juni–11. sept, utvidet til 20. sept på fluestrekningen Brustugubrue–Lora). Hvis du fisker: små olivener, mygg og slanke nymfer på stille partier."
+  utenfor:"Utenfor kjernesesongen. Sjekk lokale fiskeregler/åpningstider. Hvis du fisker: små olivener, mygg og slanke nymfer på stille partier."
 };
-/* flueboks for sone 7 – prio fra «må-ha»-rangeringen i guiden.
+/* flueboks – prio fra «må-ha»-rangeringen i guiden (arketype: kald høyfjellselv).
    seasons: perioder fluen er aktuell ('all' = hele sesongen).
    tags: forhold den løftes av (clearLow=lav&klar, overcastRain=grått/regn,
    highWater=høy/farget, evening=kveldsvak). allRound=basisføde hele tiden. */
@@ -218,6 +218,12 @@ const LESJA_FLIES=[
   {name:"Bibio",type:"Terrestrial",size:"#10–12",im:"Bibio / hårmygg",lat:"Bibio",prio:17,seasons:["sensommer"],tags:["clearLow"],tip:"Sensommer/fjelldager med riktig insektbilde; dødt eller lett drivende."},
   {name:"Black Woolly Bugger",type:"Streamer",size:"#8–10",im:"Byttefisk / stor larve",lat:"—",prio:18,seasons:["tidlig"],tags:["highWater"],tip:"Større silhuett ved høy vannføring eller skumring; fiskes rolig, ikke aggressivt."},
 ];
+/* flue-arketyper: elve-profilen velger arketype (flyArchetype).
+   Nye arketyper (skogselv, stor lavlandselv …) legges til her. */
+const FLY_ARCHETYPES={
+  "kald-hoyfjellselv": { flies: LESJA_FLIES, periodTxt: LESJA_PERIOD_TXT },
+};
+function flyArchetype(id){ return FLY_ARCHETYPES[id] || FLY_ARCHETYPES["kald-hoyfjellselv"]; }
 /* gjeldende forhold -> sett av aktive «tags» */
 function lesjaTags(cloud, precip, wt, fcat, clarity, sunEl){
   const t=new Set();
@@ -230,9 +236,9 @@ function lesjaTags(cloud, precip, wt, fcat, clarity, sunEl){
   if(wt!=null && wt>=14) t.add("warm");
   return t;
 }
-/* ranger hele flueboksen for sone 7 etter sesong + forhold */
-function rankLesjaFlies(period, tags){
-  return LESJA_FLIES.map(f=>{
+/* ranger hele flueboksen etter sesong + forhold */
+function rankLesjaFlies(period, tags, flies){
+  return (flies||LESJA_FLIES).map(f=>{
     let s=(20-f.prio)*2;                                   // grunnprioritet fra guiden
     s += (f.seasons.includes("all")||f.seasons.includes(period)) ? 30 : -38;
     if(f.tags) f.tags.forEach(tag=>{ if(tags.has(tag)) s+=22; });
@@ -248,8 +254,9 @@ function hatchAdvice(date, waterTemp, cloudFrac, rainMm, opts){
   const hs=hatchState(date, waterTemp, cloudFrac, rainMm);
   const period=lesjaPeriod(dayOfYear(date));
   const tags=lesjaTags(cloudFrac, rainMm, waterTemp, opts.fcat, opts.clarity, opts.sunEl);
-  const flies=rankLesjaFlies(period, tags);
-  const primary=LESJA_PERIOD_TXT[period];
+  const arch=flyArchetype(opts.archetype);
+  const flies=rankLesjaFlies(period, tags, arch.flies);
+  const primary=arch.periodTxt[period];
 
   let tactic;
   if(tags.has("highWater"))         tactic="Høyere/litt farget vann: øk til større nymfe (PT, hareøre, steinflue) eller mørk streamer — ikke prøv å «blende» fisken med flashy mønstre.";

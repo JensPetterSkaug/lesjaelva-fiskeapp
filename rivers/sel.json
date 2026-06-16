@@ -1,0 +1,31 @@
+{
+  "id": "sel",
+  "name": "Sel — Gudbrandsdalslågen / Otta",
+  "shortName": "Sel",
+  "fishonTitle": "Fluevalg og bestefiskested i Sel",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Gudbrandsdalen",
+  "lat": 61.7717,
+  "lon": 9.5407,
+  "altitude": 290,
+  "station": "SETT-INN",
+  "stations": [
+    { "id": "SETT-INN", "label": "Sett inn NVE-stasjon" }
+  ],
+  "weatherPoints": [
+    { "label": "Otta", "lat": 61.7717, "lon": 9.5407, "altitude": 290 },
+    { "label": "Sel", "lat": 61.8420, "lon": 9.5060, "altitude": 320 }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/sel.json",
+  "flyArchetype": "kald-hoyfjellselv",
+  "_todo": [
+    "Verifiser/erstatt NVE Sildre-stasjon(er) for Lågen/Otta i Sel (station + stations[]).",
+    "Sett sekundærstasjon (secondary): nveStation, normalsStation, metLat, metLon, metAlt.",
+    "Finjuster lat/lon/altitude til faktisk fiskesone.",
+    "Bygg public/terrain/sel.json med elvepunkter + horisont for LE-kartet.",
+    "Fyll inn leeZones (stedsnavn etter lengdegrad).",
+    "Vurder egen flueguide -> egen flyArchetype hvis elva avviker fra kald høyfjellselv."
+  ]
+}
