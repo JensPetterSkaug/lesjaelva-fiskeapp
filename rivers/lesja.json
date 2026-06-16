@@ -1,0 +1,40 @@
+{
+  "id": "lesja",
+  "name": "Lesjaelva — øvre Gudbrandsdalslågen, sone 7",
+  "shortName": "Lesjaelva",
+  "fishonTitle": "Fluevalg og bestefiskested i Lesjaelva",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Gudbrandsdalen",
+  "lat": 62.1235,
+  "lon": 8.8678,
+  "altitude": 560,
+  "station": "2.346.0",
+  "stations": [
+    { "id": "2.346.0", "label": "Lesjavatnet" },
+    { "id": "2.303.0", "label": "Dombås" }
+  ],
+  "weatherPoints": [
+    { "label": "Brustugubrue", "lat": 62.0850, "lon": 9.0302, "altitude": 540 },
+    { "label": "Leirmo", "lat": 62.1650, "lon": 8.6489, "altitude": 600 }
+  ],
+  "secondary": {
+    "label": "Dombås",
+    "nveStation": "2.303.0",
+    "normalsStation": "2.303.0",
+    "metLat": 62.087,
+    "metLon": 9.101,
+    "metAlt": 568
+  },
+  "leeZones": [
+    { "maxLon": 8.64, "name": "Øvre (Lesjaskogvatnet-utløp)" },
+    { "maxLon": 8.70, "name": "Leirmo / Lora" },
+    { "maxLon": 8.80, "name": "Lora–Stavem" },
+    { "maxLon": 8.90, "name": "Lesja" },
+    { "maxLon": 8.96, "name": "Lesja–Bottheim" },
+    { "maxLon": 9.04, "name": "Bottheim–Brustugubrue" },
+    { "maxLon": 9.09, "name": "Nedre fluesone (Joramo)" },
+    { "name": "Li / Dovre-grensa" }
+  ],
+  "terrainFile": "terrain/lesja.json",
+  "flyArchetype": "kald-hoyfjellselv"
+}

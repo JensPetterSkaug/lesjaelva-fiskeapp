@@ -1,0 +1,31 @@
+{
+  "id": "hemsil",
+  "name": "Hemsil — Hemsedal",
+  "shortName": "Hemsil",
+  "fishonTitle": "Fluevalg og bestefiskested i Hemsil",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Hallingdal",
+  "lat": 60.8636,
+  "lon": 8.5560,
+  "altitude": 620,
+  "station": "SETT-INN",
+  "stations": [
+    { "id": "SETT-INN", "label": "Sett inn NVE-stasjon" }
+  ],
+  "weatherPoints": [
+    { "label": "Hemsedal", "lat": 60.8636, "lon": 8.5560, "altitude": 620 },
+    { "label": "Tuv", "lat": 60.9180, "lon": 8.6520, "altitude": 560 }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/hemsil.json",
+  "flyArchetype": "kald-hoyfjellselv",
+  "_todo": [
+    "Verifiser/erstatt NVE Sildre-stasjon(er) for Hemsil/Hemsedal (station + stations[]).",
+    "Sett sekundærstasjon (secondary): nveStation, normalsStation, metLat, metLon, metAlt.",
+    "Finjuster lat/lon/altitude til faktisk fiskesone.",
+    "Bygg public/terrain/hemsil.json med elvepunkter + horisont for LE-kartet.",
+    "Fyll inn leeZones (stedsnavn etter lengdegrad).",
+    "Vurder egen flueguide -> egen flyArchetype hvis elva avviker fra kald høyfjellselv."
+  ]
+}

@@ -87,7 +87,27 @@ async function getJSON(url){
   const r=await fetch(url);
   return r.json();
 }
-async function loadConfig(){ STATE.cfg=await getJSON("/api/config"); return STATE.cfg; }
+/* river-id fra URL-stien (/lesja -> "lesja"); tom => default på server */
+function riverIdFromPath(){
+  const seg=location.pathname.split("/").filter(Boolean)[0];
+  return (seg && !seg.includes(".")) ? seg : "";
+}
+async function loadConfig(){
+  const r=riverIdFromPath();
+  STATE.cfg=await getJSON("/api/config"+(r?`?river=${encodeURIComponent(r)}`:""));
+  applyRiverChrome();
+  return STATE.cfg;
+}
+/* sett elve-spesifikke titler fra profilen */
+function applyRiverChrome(){
+  const c=STATE.cfg||{};
+  if(c.shortName||c.name) document.title=`${c.shortName||c.name} · Fiskedashboard`;
+  const set=(sel,txt)=>{ const e=document.querySelector(sel); if(e&&txt!=null) e.textContent=txt; };
+  set(".eyebrow", c.eyebrow);
+  set(".main-h1", c.name);
+  set(".fishon-h1", c.fishonTitle);
+  if(c.secondary&&c.secondary.label) set("#secStationName", c.secondary.label);
+}
 
 async function loadWeather(){
   const c=STATE.cfg;
@@ -345,7 +365,7 @@ function buildDays(){
     };
     const sunElNow = solarPosition(new Date(), STATE.cfg.lat, STATE.cfg.lon).elevation;
     STATE.now={ state:st, idx:computeIndex(st), wtNow, wtMeasured, fcat, clarity, windDir:now.windDir,
-                hatch:hatchAdvice(new Date(), wtNow, now.cloud, now.precip, {fcat, clarity, sunEl:sunElNow}), now };
+                hatch:hatchAdvice(new Date(), wtNow, now.cloud, now.precip, {fcat, clarity, sunEl:sunElNow, archetype:STATE.cfg.flyArchetype}), now };
   }
 }
 function flowLevel0(){ return STATE.discharge ? percentileRank(STATE.discharge.dist, STATE.discharge.latest) : 0.55; }
@@ -472,13 +492,13 @@ function renderBreakdown(idx, label){
 function renderHatch(sel){
   let adv, when;
   if(sel==null && STATE.now){ adv=STATE.now.hatch; when="nå"; }
-  else { const d=STATE.days[sel==null?0:sel]; adv=hatchAdvice(d.date, d.wt, d.md.cloud, d.precip, {fcat:d.fcat, clarity:d.clarity, sunEl:null}); when=dayLabel(d.date); }
+  else { const d=STATE.days[sel==null?0:sel]; adv=hatchAdvice(d.date, d.wt, d.md.cloud, d.precip, {fcat:d.fcat, clarity:d.clarity, sunEl:null, archetype:STATE.cfg.flyArchetype}); when=dayLabel(d.date); }
   $("hatchWhen").textContent="· "+when;
   const flies=adv.flies.slice(0,7).map(f=>`<li><b>${f.name}</b> <span class="fl-sz">${f.size}</span> — ${f.im} · ${f.tip}</li>`).join("");
   $("hatchBox").innerHTML=`
     <span class="htag ${adv.state.cat}">${HATCH_LABEL[adv.state.cat]}</span>
     <p>${adv.primary}</p>
-    <h4>Anbefalte fluer for Lesjaelva nå</h4><ul>${flies}</ul>
+    <h4>Anbefalte fluer for ${(STATE.cfg&&STATE.cfg.shortName)||"elva"} nå</h4><ul>${flies}</ul>
     <h4>Taktikk</h4><p>${adv.tactic}</p>
     ${adv.note?`<p style="color:var(--teal)">${adv.note}</p>`:""}`;
 }
@@ -584,7 +604,7 @@ function renderFishon(){
     </section>
     <section class="panel fishon-advice hatchbox">
       <h3>Klekking &amp; flueråd</h3>
-      <h4>Anbefalte fluer for Lesjaelva nå</h4><ul>${flies}</ul>
+      <h4>Anbefalte fluer for ${(STATE.cfg&&STATE.cfg.shortName)||"elva"} nå</h4><ul>${flies}</ul>
       <h4>Taktikk</h4><p>${adv.tactic}</p>
       ${adv.note?`<p style="color:var(--teal)">${adv.note}</p>`:""}
     </section>`;
@@ -762,7 +782,9 @@ async function loadDombasChart(){
   if(!STATE.cfg.hasKey) return;
   const to=new Date(), from=new Date(to.getTime()-30*864e5);
   const ref=`${isoDate(from)}/${isoDate(to)}`;
-  const r=await getJSON(`/api/nve/Observations?StationId=2.303.0&Parameter=1000,1001&ResolutionTime=1440&ReferenceTime=${ref}`);
+  const sec=(STATE.cfg&&STATE.cfg.secondary)||{};
+  if(!sec.nveStation) return;
+  const r=await getJSON(`/api/nve/Observations?StationId=${sec.nveStation}&Parameter=1000,1001&ResolutionTime=1440&ReferenceTime=${ref}`);
   if(r.error||!r.data) return;
   let stageSeries=[], flowSeries=[];
   for(const d of r.data){
@@ -771,8 +793,8 @@ async function loadDombasChart(){
   }
   if(!stageSeries.length) return;
   const [wx, normals]=await Promise.all([
-    getJSON(`/api/met?lat=62.087&lon=9.101&altitude=568`),
-    getJSON(`/api/normals?station=2.303.0`)
+    getJSON(`/api/met?lat=${sec.metLat}&lon=${sec.metLon}&altitude=${sec.metAlt}`),
+    getJSON(`/api/normals?station=${sec.normalsStation||sec.nveStation}`)
   ]);
   const norm=(normals && !normals.error) ? normals : null;
   const precipByDay=metDailyPrecip(wx);
@@ -978,7 +1000,11 @@ function renderPressureChart(){
 let LEEMAP=null, LEELAYER=null;
 async function loadLeeTerrain(){
   if(STATE.terrain) return;
-  try{ STATE.terrain=await getJSON("/terrain.json"); }catch(e){ STATE.terrain=null; }
+  const file=(STATE.cfg&&STATE.cfg.terrainFile)||"terrain/lesja.json";
+  try{
+    const t=await getJSON("/"+file.replace(/^\//,""));
+    STATE.terrain=Array.isArray(t)?t:null;       // 404 gir {error:…}, ikke array
+  }catch(e){ STATE.terrain=null; }
 }
 /* vindkilde for kartet = samme som måleren (valgt dag eller nå) */
 function mapWindDir(){
@@ -1002,7 +1028,7 @@ function shelterDeg(point, windFrom){
 function renderLeeMap(){
   const T=STATE.terrain, host=$("leeMap"), cap=$("leeCap"), leg=$("leeLegend");
   if(typeof L==="undefined"){ if(cap) cap.textContent="Kartbiblioteket (Leaflet) lastet ikke."; return; }
-  if(!T||!T.length){ if(cap) cap.textContent="Ingen terrengdata."; return; }
+  if(!T||!T.length){ if(cap) cap.textContent="Terrengdata for LE-kartet er ikke lagt inn for denne elva ennå."; if(leg) leg.innerHTML=""; return; }
   if(!LEEMAP){
     LEEMAP=L.map(host,{scrollWheelZoom:false});
     L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
@@ -1041,14 +1067,12 @@ function renderLeeMap(){
 }
 /* stedsnavn ut fra lengdegrad langs dalen */
 function leePlace(lon){
-  if(lon<8.64) return "Øvre (Lesjaskogvatnet-utløp)";
-  if(lon<8.70) return "Leirmo / Lora";
-  if(lon<8.80) return "Lora–Stavem";
-  if(lon<8.90) return "Lesja";
-  if(lon<8.96) return "Lesja–Bottheim";
-  if(lon<9.04) return "Bottheim–Brustugubrue";
-  if(lon<9.09) return "Nedre fluesone (Joramo)";
-  return "Li / Dovre-grensa";
+  const zones=(STATE.cfg&&STATE.cfg.leeZones)||[];
+  for(const z of zones){
+    if(z.maxLon==null) return z.name;     // siste sone = default
+    if(lon<z.maxLon) return z.name;
+  }
+  return zones.length ? zones[zones.length-1].name : "";
 }
 function leeLabel(s){
   if(s>=10) return ["god le","#4fb6a8"];
@@ -1265,6 +1289,7 @@ async function logForecast(){
   const [vt]=verdict(now.idx.score);
   const row={
     dato: osloDateKey(new Date()),
+    river: (STATE.cfg&&STATE.cfg.id)||"lesja",
     logget: new Date().toLocaleString("no-NO",{timeZone:"Europe/Oslo"}),
     indeks: now.idx.score, vurdering: vt,
     vanntemp_lesja: prim.temp?round1(prim.temp.latest):round1(now.wtNow),

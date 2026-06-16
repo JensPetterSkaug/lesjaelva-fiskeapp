@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiskedashboard · velg elv</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .lp-wrap{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+  .lp-head{margin-bottom:28px}
+  .lp-head h1{font-size:30px;letter-spacing:-0.02em;margin:8px 0 6px}
+  .lp-sub{color:var(--mut);font-size:14.5px;line-height:1.6;max-width:560px}
+  .lp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  a.lp-card{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:18px 18px 20px;transition:.14s}
+  a.lp-card:hover{border-color:var(--teal-dim);transform:translateY(-2px)}
+  .lp-card .lp-name{font-size:18px;font-weight:650;color:var(--ink);letter-spacing:-0.01em}
+  .lp-card .lp-region{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-top:8px}
+  .lp-card .lp-go{color:var(--mut);font-size:13px;margin-top:12px}
+  .lp-empty{color:var(--mut2);font-size:14px;padding:24px 0}
+</style>
+</head>
+<body>
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <p class="eyebrow">Elvefiske · live prognose · NVE Sildre + MET</p>
+      <h1>Fiskedashboard</h1>
+      <p class="lp-sub">Live fiskeforhold, sesongbasert fluevalg og beste fiskested per elv. Velg elv for å åpne dashbordet.</p>
+    </div>
+    <div class="lp-grid" id="riverGrid"><div class="lp-empty">Laster elver …</div></div>
+  </div>
+  <script>
+    fetch("/api/rivers").then(r=>r.json()).then(d=>{
+      const grid=document.getElementById("riverGrid");
+      const rivers=(d&&d.rivers)||[];
+      if(!rivers.length){ grid.innerHTML='<div class="lp-empty">Ingen elver konfigurert ennå.</div>'; return; }
+      grid.innerHTML=rivers.map(r=>`<a class="lp-card" href="/${r.id}">
+        <div class="lp-name">${r.shortName||r.name||r.id}</div>
+        ${r.region?`<div class="lp-region">${r.region}</div>`:""}
+        <div class="lp-go">Åpne dashbord →</div>
+      </a>`).join("");
+    }).catch(()=>{ document.getElementById("riverGrid").innerHTML='<div class="lp-empty">Kunne ikke laste elveliste.</div>'; });
+  </script>
+</body>
+</html>
