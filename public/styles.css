@@ -197,6 +197,14 @@ body.tab-fishon .head-left .fishon-h1{display:block}
 .leemap{width:100%;height:420px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
 .leemap .leaflet-popup-content-wrapper,.leemap .leaflet-popup-tip{background:var(--panel);color:var(--ink)}
 .leaflet-container{background:#0f2126;font-family:var(--sans)}
+/* fast vindretnings-pil på le-kartet */
+.lee-wind{display:flex;align-items:center;gap:8px;background:rgba(13,26,30,.84);
+  border:1px solid var(--line);border-radius:10px;padding:7px 11px 7px 9px;
+  color:var(--ink);box-shadow:0 1px 6px rgba(0,0,0,.35)}
+.lee-wind svg{flex:0 0 auto}
+.lee-wind .lw-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--mut);line-height:1.3;white-space:nowrap}
+.lee-wind .lw-lbl b{display:inline;color:var(--ink);font-size:12.5px}
 
 /* leplass-liste */
 .leelist{margin-top:14px}
@@ -205,7 +213,6 @@ body.tab-fishon .head-left .fishon-h1{display:block}
 .leerow .lr-rank{font-family:var(--mono);color:var(--teal);font-weight:600;width:18px;text-align:center;flex:0 0 auto}
 .leerow .lr-place{flex:1 1 150px;color:var(--ink)}
 .leerow .lr-shel{font-family:var(--mono);font-size:12.5px;flex:0 0 auto}
-.leerow .lr-coord{font-family:var(--mono);font-size:11.5px;color:var(--mut2);flex:0 0 auto}
 .leerow .lr-link{flex:0 0 auto;font-size:12.5px;white-space:nowrap}
 .leelist .empty{color:var(--mut2);font-size:12.5px;padding:8px 0}
 

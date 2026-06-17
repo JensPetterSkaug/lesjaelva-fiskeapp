@@ -726,6 +726,7 @@ async function refresh(){
     STATE.selected=null;
     renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow(); renderFishon();
     logForecast();
+    loadTempChart().then(renderTempChart).catch(()=>{});
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
     loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderTomorrow(); renderFishon(); }).catch(()=>{});
@@ -1041,9 +1042,86 @@ function renderPressureChart(){
 }
 
 /* ============================================================
+   VANNTEMPERATUR: historikk (NVE) + modellert prognose
+   ============================================================ */
+async function loadTempChart(){
+  STATE.tempChart=null;
+  const prim=(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
+  // HISTORIKK: målt vanntemp (NVE param 1003, døgnoppløsning) siste 30 d
+  let hist=[];
+  if(prim && STATE.cfg.hasKey){
+    const to=new Date(), from=new Date(to.getTime()-30*864e5);
+    const ref=`${isoDate(from)}/${isoDate(to)}`;
+    try{
+      const r=await getJSON(`/api/nve/Observations?StationId=${prim}&Parameter=1003&ResolutionTime=1440&ReferenceTime=${ref}`);
+      if(r&&r.data) for(const d of r.data){ if(d.parameter===1003)
+        hist=(d.observations||[]).filter(o=>o.value!=null).map(o=>({tm:new Date(o.time).getTime(), v:o.value})); }
+    }catch(e){}
+  }
+  // PROGNOSE: modellert vanntemp fra 14-dagersmodellen (STATE.days[].wt)
+  const fc=(STATE.days||[]).map(d=>({tm:d.date.getTime(), v:d.wt})).filter(p=>p.v!=null);
+  if(!hist.length && !fc.length) return;
+  STATE.tempChart={hist, fc};
+}
+function renderTempChart(){
+  const host=$("tempChart"), cap=$("tempCap"), leg=$("tempLegend"), Tc=STATE.tempChart;
+  if(!host) return;
+  if(!Tc||(!Tc.hist.length && !Tc.fc.length)){ host.innerHTML=""; if(leg)leg.innerHTML=""; if(cap)cap.textContent="Ingen vanntemperaturdata for denne stasjonen."; return; }
+  const hist=Tc.hist, fc=Tc.fc;
+  const nowMs=hist.length?hist[hist.length-1].tm:fc[0].tm;
+  const t0=hist.length?hist[0].tm:fc[0].tm;
+  const t1=fc.length?fc[fc.length-1].tm:hist[hist.length-1].tm;
+  const allV=hist.map(p=>p.v).concat(fc.map(p=>p.v));
+  let lo=Math.min(...allV), hi=Math.max(...allV);
+  lo=Math.min(lo,8); hi=Math.max(hi,18);            // hold optimal/stress-sonen synlig
+  const pad=(hi-lo)*0.10||1; lo=Math.max(0,lo-pad); hi+=pad;
+  const W=1000,H=300,pL=40,pR=16,pT=14,pB=40,pw=W-pL-pR,ph=H-pT-pB;
+  const xt=tm=>pL+(tm-t0)/(t1-t0)*pw, y=v=>pT+ph*(1-(v-lo)/(hi-lo));
+  // insektvennlig bånd 10–16 °C
+  let band="";
+  if(16>lo && 10<hi){ const yt=y(Math.min(16,hi)), yb=y(Math.max(10,lo));
+    band=`<rect x="${pL}" y="${yt.toFixed(1)}" width="${pw}" height="${(yb-yt).toFixed(1)}" fill="rgba(111,194,122,.12)"/>`; }
+  let grid="",axL="";
+  for(let t=0;t<=4;t++){ const vv=lo+(hi-lo)*t/4, yy=y(vv);
+    grid+=`<line x1="${pL}" y1="${yy.toFixed(1)}" x2="${pL+pw}" y2="${yy.toFixed(1)}" stroke="rgba(126,154,152,.13)"/>`;
+    axL+=`<text x="${pL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end" font-size="11" fill="#7e9a98" font-family="ui-monospace,monospace">${Math.round(vv)}</text>`; }
+  let refs="";
+  [[18,"18° stress","#e0935a"],[20,"20° stopp","#d8624a"]].forEach(([rv,lbl,col])=>{ if(rv>lo&&rv<hi){
+    refs+=`<line x1="${pL}" y1="${y(rv).toFixed(1)}" x2="${pL+pw}" y2="${y(rv).toFixed(1)}" stroke="${col}" stroke-opacity=".55" stroke-dasharray="2 6"/><text x="${pL+4}" y="${(y(rv)-4).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text>`; } });
+  let xlab="",lastDay="";
+  hist.concat(fc).forEach(p=>{ const dk=osloDateKey(new Date(p.tm)); if(dk!==lastDay){ lastDay=dk; if(parseInt(dk.slice(8),10)%3===0) xlab+=`<text x="${xt(p.tm).toFixed(1)}" y="${H-pB+16}" text-anchor="middle" font-size="10.5" fill="#52706e" font-family="ui-monospace,monospace">${dk.slice(8)}.${dk.slice(5,7)}</text>`; } });
+  const histPath=hist.length?hist.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
+  const fcPath=fc.length?fc.map((p,i)=>(i?"L":"M")+xt(p.tm).toFixed(1)+" "+y(p.v).toFixed(1)).join(" "):"";
+  const nowX=xt(nowMs).toFixed(1);
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:300px">
+    ${band}${grid}${refs}
+    <line x1="${nowX}" y1="${pT}" x2="${nowX}" y2="${H-pB}" stroke="rgba(79,182,168,.5)" stroke-dasharray="4 3"/>
+    <text x="${nowX}" y="${pT+10}" text-anchor="middle" font-size="10" fill="#4fb6a8">nå</text>
+    <path d="${histPath}" fill="none" stroke="#4fb6a8" stroke-width="2"/>
+    <path d="${fcPath}" fill="none" stroke="#e0935a" stroke-width="2" stroke-dasharray="6 4"/>
+    ${axL}${xlab}<text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">°C</text>
+  </svg>`;
+  if(leg) leg.innerHTML=`
+    <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Målt siste 30 d (NVE)</span>
+    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Modellert prognose</span>
+    <span class="lg"><span class="sw" style="background:rgba(111,194,122,.4);border:none;height:10px;width:14px;border-radius:2px"></span>Insektvennlig 10–16°</span>`;
+  // analyse
+  const nowV=hist.length?hist[hist.length-1].v:fc[0].v;
+  const b3=hist.length?closestByTime(hist,nowMs-3*864e5):null;
+  const d3=b3?nowV-b3.v:0;
+  const end=fc.length?fc[fc.length-1].v:nowV;
+  const trendW=d=>d>=0.6?"stigende":(d<=-0.6?"fallende":"stabil");
+  const band1016 = nowV>=10&&nowV<=16;
+  cap.innerHTML=`Vanntemp nå <b>${fmt1(nowV)} °C</b>, <b>${trendW(d3)}</b> siste 3 d. `+
+    `Prognose mot dag 14: <b>${fmt1(end)} °C</b>. `+
+    (band1016?`Innenfor det insektvennlige vinduet (10–16 °C). `:(nowV>16?`Over optimal — hold øye med stressgrensen ved 18–20 °C. `:`Under optimal — insektaktiviteten er dempet. `))+
+    `<span class="muted">Kilde: NVE Sildre (målt) + modellert prognose fra lufttemperatur. Vekt i indeksen: 0,25.</span>`;
+}
+
+/* ============================================================
    LE-KART: interaktivt Leaflet-kart + terrengbasert vindskjerming
    ============================================================ */
-let LEEMAP=null, LEELAYER=null;
+let LEEMAP=null, LEELAYER=null, LEEWIND=null;
 async function loadLeeTerrain(){
   if(STATE.terrain) return;
   const file=(STATE.cfg&&STATE.cfg.terrainFile)||"terrain/lesja.json";
@@ -1083,8 +1161,20 @@ function renderLeeMap(){
     LEEMAP.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[25,25]});
     L.polyline(T.map(p=>[p.lat,p.lon]),{color:"#4fb6a8",weight:2,opacity:0.65}).addTo(LEEMAP);
     LEELAYER=L.layerGroup().addTo(LEEMAP);
+    // fast vindretnings-pil (Leaflet-control = ligger i kart-hjørnet, urørt av zoom/panorering)
+    LEEWIND=L.control({position:"topright"});
+    LEEWIND.onAdd=function(){ const d=L.DomUtil.create("div","lee-wind"); d.id="leeWindCtl"; return d; };
+    LEEWIND.addTo(LEEMAP);
   }
   const wind=mapWindDir();
+  const ctl=document.getElementById("leeWindCtl");
+  if(ctl){
+    ctl.innerHTML = (wind==null)
+      ? `<div class="lw-lbl">Vind<br>–</div>`
+      : `${windArrow(wind,30,"#4fb6a8")}<div class="lw-lbl">Vind fra<br><b>${degToCompass(wind)}</b> ${Math.round(wind)}°</div>`;
+    ctl.title = wind==null ? "Vindretning ikke tilgjengelig"
+      : `Pila peker dit vinden blåser (nedvinds). Vind fra ${degToCompass(wind)} (${Math.round(wind)}°). Sammenlign med elvas fallretning.`;
+  }
   LEELAYER.clearLayers();
   let nLe=0;
   T.forEach(p=>{
@@ -1143,7 +1233,6 @@ function renderLeeList(){
         <span class="lr-rank">${i+1}</span>
         <span class="lr-place">${p.navn||leePlace(p.lon)}</span>
         <span class="lr-shel" style="color:${c}">${Math.round(p.s*10)/10}° ${t}</span>
-        <span class="lr-coord">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>
         <a class="lr-link" href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">Veibeskrivelse →</a>
       </div>`;
     }).join("");
@@ -1409,7 +1498,7 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","colsRow","forecast","mapsec","reportsec","dombasSec","pressSec","logsec"];
+const HOME_BLOCKS=["heroSec","gate","colsRow","forecast","mapsec","reportsec","tempSec","dombasSec","pressSec","logsec"];
 const TAB_BLOCKS={
   dagsrapport:["reportsec"],
   fishon:["fishonSec","mapsec"],

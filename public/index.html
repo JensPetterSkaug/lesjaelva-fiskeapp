@@ -100,6 +100,17 @@
     <div id="reportBody"><div class="empty">Laster dagsrapport …</div></div>
   </section>
 
+  <!-- VANNTEMPERATUR: HISTORIKK + PROGNOSE -->
+  <section class="panel chartsec" id="tempSec">
+    <div class="fc-head">
+      <h3>Vanntemperatur <span class="muted">· 30 dager + 14-dagers prognose</span></h3>
+      <p class="muted fc-note">Heltrukket = målt (NVE, primærstasjon). Stiplet = modellert prognose fra lufttemperatur (demping + smeltevannsgulv). Grønt bånd = insektvennlig 10–16 °C; stiplede linjer ved stress (18 °C) og stopp (20 °C).</p>
+    </div>
+    <div class="chartlegend" id="tempLegend"></div>
+    <div class="chartbox" id="tempChart"></div>
+    <div class="chartcap" id="tempCap"></div>
+  </section>
+
   <!-- DOMBÅS VANNSTAND/VANNFØRING + PROGNOSE -->
   <section class="panel chartsec" id="dombasSec">
     <div class="fc-head">
