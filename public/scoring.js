@@ -5,12 +5,22 @@
    samt en klekke-/flueråd-modul bygd på researchdokumentet.
    ============================================================ */
 
-const W = {temp:0.24, light:0.18, press:0.16, flow:0.15, clarity:0.10, hatch:0.09, wind:0.05, stab:0.03};
+/* Vekter (sum = 1,00). Kalibrert for ørret/harr i elv.
+   yr.no: lufttemp, fukt, trykk-tendens, sky+tid (lys), snittvind.
+   NVE Sildre: vanntemp, vannføring (% av normal + trend). */
+const W = {temp:0.25, wind:0.25, flow:0.20, light:0.15, airtemp:0.05, humidity:0.05, press:0.05};
 
-/* ---- delskår-funksjoner (0..1) – identiske med originalen ---- */
+/* ---- delskår-funksjoner (0..1) ---- */
 function sTemp(t){
+  if(t==null) return 0.5;
   if(t<2)return 0.10; if(t<4)return 0.25; if(t<7)return 0.45; if(t<10)return 0.70;
   if(t<=14)return 1.00; if(t<=16)return 0.95; if(t<=18)return 0.70; if(t<20)return 0.40; return 0.10;
+}
+/* snittvind (m/s) – yr sitt første tall, ikke kast */
+function sWindAvg(ms){
+  if(ms==null) return 0.85;
+  if(ms<1)return 1.00; if(ms<2)return 0.95; if(ms<3)return 0.85; if(ms<4)return 0.60;
+  if(ms<6)return 0.35; if(ms<8)return 0.25; if(ms<10)return 0.18; return 0.12;
 }
 function sLight(cloud,time,season){
   const m={
@@ -19,42 +29,106 @@ function sLight(cloud,time,season){
     clear:   {lowlight:0.72,mid:0.55,midday:0.32}
   };
   let v=m[cloud][time];
-  if(season==="cold" && cloud==="clear" && time==="midday") v=Math.min(1,v+0.28);
-  if(season==="cold" && cloud==="clear" && time==="mid")    v=Math.min(1,v+0.15);
+  if(season==="cold" && cloud==="clear" && time==="midday") v=Math.min(1,v+0.28);  // sol varmer vannet, fjærmygg
   return v;
 }
+/* lufttemperatur (°C) fra yr */
+function sAirTemp(t){
+  if(t==null) return 0.85;
+  if(t<0)return 0.30; if(t<5)return 0.45; if(t<10)return 0.65; if(t<15)return 0.85;
+  if(t<=22)return 1.00; if(t<=26)return 0.80; return 0.60;
+}
+/* luftfuktighet (%) fra yr */
+function sHumidity(h){
+  if(h==null) return 0.75;
+  if(h<40)return 0.45; if(h<55)return 0.60; if(h<70)return 0.75; if(h<=85)return 0.90; return 1.00;
+}
+/* lineær interpolasjon over kontrollpunkter [[x,y],…] (x stigende) */
+function interp(pts, x){
+  if(x<=pts[0][0]) return pts[0][1];
+  if(x>=pts[pts.length-1][0]) return pts[pts.length-1][1];
+  for(let i=0;i<pts.length-1;i++){ const [x0,y0]=pts[i],[x1,y1]=pts[i+1];
+    if(x>=x0 && x<=x1) return y0+(y1-y0)*(x-x0)/(x1-x0); }
+  return pts[pts.length-1][1];
+}
+/* lufttrykk-TENDENS (ΔhPa over 3 t) fra yr */
+function sPressTrend(dP){
+  if(dP==null) return 0.80;
+  if(dP<=-5) return 0.70;                                    // svært bratt fall (storm)
+  return interp([[-5,0.70],[-4,1.00],[-2,1.00],[-1,0.90],[0,0.80],[1,0.62],[4,0.30],[5,0.24]], dP);
+}
+/* vannføring: nivå-kurve (% av normal), topp 90–115 % */
+function sFlowLevel(pct){
+  if(pct==null) return 0.85;
+  return interp([[20,0.35],[50,0.58],[75,0.82],[90,1.00],[115,1.00],[140,0.82],[175,0.58],[220,0.36],[300,0.24],[400,0.15]], pct);
+}
+/* trend-multiplikator (hysterese), avhengig av nivå% og relativ 24t-trend */
+function flowTrendMult(pct, relTrend){
+  if(pct==null||relTrend==null) return 1.00;
+  if(relTrend>0.20) return pct>150?0.40:(pct>110?0.70:0.95);  // sterkt stigende
+  if(relTrend>0.05){                                          // stigende
+    if(pct<110) return 1.08;                                  // fra lav
+    if(pct>150) return 0.68;                                  // ved høy
+    return 1.00;
+  }
+  if(relTrend<-0.05) return pct>120?1.10:1.00;                // fallende fra høy -> klarner
+  return 1.00;                                                // stabil
+}
+function sFlow(pct, relTrend){
+  return Math.max(0, Math.min(1, sFlowLevel(pct)*flowTrendMult(pct,relTrend)));
+}
+
+/* kategori-baserte delskår – brukes av time-for-time-rapporten og trykk-grafen (ikke hovedindeksen) */
 const sPress={falling:1.00,stable:0.78,slowrise:0.55,bluebird:0.25,lowflat:0.40};
-const sFlow ={optimal:1.00,risingfromlow:0.92,high:0.70,lowclear:0.55,flood:0.30,drought:0.30};
 const sClar ={tinge:1.00,gin:0.70,stained:0.48,muddy:0.20};
 const sHatch={active:1.00,likely:0.75,sparse:0.45,none:0.30};
 const sWind ={breeze:1.00,calm:0.80,fresh:0.55,strong:0.30};
-const sStab ={stable:1.00,moderate:0.65,abrupt:0.35};
 
+/* multiplikative porter; G = produkt (hver ≤ 1). Setter også varsel-melding. */
 function gates(s){
   let g=1, msg="", cls="";
-  if(s.temp>=20){ g*=0.15; msg="Vannet er ≥ 20 °C — ørreten er oksygenstresset. Indeksen er sterkt nedjustert, og du bør la fisken være."; cls="warn"; }
-  else if(s.temp>=18){ g*=0.6; if(!msg){msg="Vannet nærmer seg stressgrensen (18–20 °C). Fisk tidlig/sent og land raskt."; cls="note";} }
-  if(s.flow==="flood" || s.clarity==="muddy"){ g*=0.45; if(!msg){msg="Flom eller sjokoladebrunt vann overstyrer det meste — søk klarere vann langs bredden eller vent på at silten klarner."; cls="note";} }
+  // flom-port (sikkerhet) – høyest prioritet på melding
+  if(s.flowPct!=null && s.flowPct>=175){
+    const falling=(s.flowTrend!=null && s.flowTrend<-0.05);
+    let fg = s.flowPct>=250?0.10 : s.flowPct>=200?0.20 : (1.00-0.55*(s.flowPct-175)/25);
+    if(falling) fg=Math.min(1.0, fg*1.4);
+    g*=fg;
+    if(s.flowPct>=200 && !falling){
+      msg=`Svært høy vannføring (~${Math.round(s.flowPct)} % av normal) — elva er i praksis ikke fiskbar, og høy/stigende vannføring er farlig å vade. Vent til den faller og klarner.`; cls="warn";
+    } else {
+      msg=`Høy vannføring (~${Math.round(s.flowPct)} % av normal)${falling?", men fallende — klarner":""}. Søk roligere kanter og vær forsiktig med vading.`; cls="note";
+    }
+  }
+  // temp-port
+  if(s.temp>=20){ g*=0.15; if(!msg){ msg="Vannet er ≥ 20 °C — ørreten er oksygenstresset. Indeksen er sterkt nedjustert, og du bør la fisken være."; cls="warn"; } }
+  else if(s.temp>=18){ g*=0.6; if(!msg){ msg="Vannet nærmer seg stressgrensen (18–20 °C). Fisk tidlig/sent og land raskt."; cls="note"; } }
+  // vind-port: tørrfluepresentasjon kollapser over ~6 m/s snittvind
+  if(s.windAvg!=null && s.windAvg>6){
+    const wg = s.windAvg>=10 ? 0.15 : interp([[6,1.00],[7,0.55],[8,0.38],[10,0.20]], s.windAvg);
+    g*=wg;
+    if(!msg){ msg=`Sterk snittvind (${Math.round(s.windAvg)} m/s) gjør tørrfluefiske vanskelig — fisk tyngre nymfe/streamer eller søk le.`; cls="note"; }
+  }
+  // bakoverkompatibel flom/grums-port for time-for-time-modellen (kategori-felt)
+  if(s.flow==="flood" || s.clarity==="muddy"){ g*=0.45; if(!msg){ msg="Flom eller svært grumset vann — søk klarere vann langs bredden eller vent."; cls="note"; } }
   return {g,msg,cls};
 }
 
 const PART_LABELS = {
-  temp:"Vanntemperatur", light:"Lys / sky / tid", press:"Lufttrykk-trend", flow:"Vannføring",
-  clarity:"Vannklarhet", hatch:"Klekking / næring", wind:"Vind", stab:"Stabilitet"
+  temp:"Vanntemperatur", wind:"Vind (snitt)", flow:"Vannføring", light:"Lysforhold",
+  airtemp:"Lufttemperatur", humidity:"Luftfuktighet", press:"Lufttrykk-tendens"
 };
 
-/* state = {temp, cloud, time, press, flow, clarity, hatch, wind, stab, season} */
+/* state = {temp, windAvg, flowPct, flowTrend, cloud, time, season, airTemp, humidity, pressTrend} */
 function computeIndex(state){
   const light=sLight(state.cloud,state.time,state.season);
   const parts=[
-    {key:"temp",   w:W.temp,   s:sTemp(state.temp)},
-    {key:"light",  w:W.light,  s:light},
-    {key:"press",  w:W.press,  s:sPress[state.press]},
-    {key:"flow",   w:W.flow,   s:sFlow[state.flow]},
-    {key:"clarity",w:W.clarity,s:sClar[state.clarity]},
-    {key:"hatch",  w:W.hatch,  s:sHatch[state.hatch]},
-    {key:"wind",   w:W.wind,   s:sWind[state.wind]},
-    {key:"stab",   w:W.stab,   s:sStab[state.stab]},
+    {key:"temp",    w:W.temp,    s:sTemp(state.temp)},
+    {key:"wind",    w:W.wind,    s:sWindAvg(state.windAvg)},
+    {key:"flow",    w:W.flow,    s:sFlow(state.flowPct,state.flowTrend)},
+    {key:"light",   w:W.light,   s:light},
+    {key:"airtemp", w:W.airtemp, s:sAirTemp(state.airTemp)},
+    {key:"humidity",w:W.humidity,s:sHumidity(state.humidity)},
+    {key:"press",   w:W.press,   s:sPressTrend(state.pressTrend)},
   ];
   const raw=parts.reduce((a,p)=>a+p.w*p.s,0);
   const {g,msg,cls}=gates(state);

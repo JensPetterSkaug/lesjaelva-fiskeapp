@@ -54,13 +54,18 @@ Loggen lagres lokalt i `data/` (`prognose.jsonl`, `observasjoner.jsonl`, *gitign
 
 ## Modellen
 
-Fiskeindeksen vekter åtte faktorer (vanntemp 0,24 · lys/sky 0,18 · trykk 0,16 · vannføring 0,15 · klarhet 0,10
-· klekking 0,09 · vind 0,05 · stabilitet 0,03) og legger på harde portvoktere ved ≥18–20 °C vann og flom/grumset
-vann. Se `public/scoring.js` — formelen er identisk med din `fiskeindeks_1.html`.
+Fiskeindeksen (kalibrert for ørret/harr i elv) vekter sju faktorer (vanntemp 0,25 · vind 0,25 · vannføring 0,20
+· lys 0,15 · lufttemp 0,05 · luftfuktighet 0,05 · lufttrykk-tendens 0,05) og legger på multiplikative porter ved
+≥18–20 °C vanntemp, sterk snittvind (>6 m/s, tørrfluepresentasjon) og flom (~≥175 % av normal, med vade-advarsel).
+Vind = snittvind fra yr (ikke kast); vannføring = nivå i % av normal × trend-multiplikator (hysterese). Se `public/scoring.js`.
 
-**Forbehold:** Vannklarhet og vannføringskategori *utledes* fra vannføringsnivå + nedbør (stasjonen har ingen
-turbiditetssensor) — kan overstyres i innstillinger. Vanntemperatur for kommende dager *modelleres* fra
-lufttemperatur (demping + smeltevannsgulv), ikke målt. Dette er angler-heuristikk, ikke en validert biologisk ligning.
+**Datakilder:** yr.no (lufttemp, luftfuktighet, lufttrykk-tendens, skydekke+tid, snittvind) og NVE Sildre (vanntemp,
+vannføring i % av normal + trend).
+
+**Forbehold:** «% av normal» bruker median av siste ~60 dagers vannføring som referanse (proxy, ikke 15-års
+sesongnormal). Vanntemperatur for kommende dager *modelleres* fra lufttemperatur (demping + smeltevannsgulv), ikke målt.
+Luftfuktighet og 3-timers trykk-tendens finnes per time for de nærmeste døgnene; lenger ut blir prognose-faktorene
+grovere. Dette er angler-heuristikk, ikke en validert biologisk ligning.
 
 **Time-for-time-rapporten** bruker en egen vekting (lysstyrke 0,20 · le 0,16 · trykk 0,13 · sol/skygge 0,13 ·
 vindstyrke 0,12 · vanntemp 0,12 · klekking 0,09 · klarhet 0,05). Solhøyde og -asimut beregnes astronomisk

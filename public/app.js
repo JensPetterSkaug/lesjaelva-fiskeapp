@@ -231,14 +231,15 @@ function parseWeather(){
   const next6=(n0.data.next_6_hours||{});
   const precipNow=(next1.details&&next1.details.precipitation_amount) ??
                   (next6.details&&next6.details.precipitation_amount) ?? 0;
-  // trykktrend: endring fram i tid ~6t
-  let pNow=det.air_pressure_at_sea_level, p6=pNow;
+  // trykktrend: endring fram i tid ~3t (tendens, til indeks) og ~6t (visning)
+  let pNow=det.air_pressure_at_sea_level, p6=pNow, p3=pNow;
   const t0=new Date(n0.time).getTime();
+  for(const e of ts){ if(new Date(e.time).getTime()-t0>=3*36e5){ p3=e.data.instant.details.air_pressure_at_sea_level; break; } }
   for(const e of ts){ if(new Date(e.time).getTime()-t0>=6*36e5){ p6=e.data.instant.details.air_pressure_at_sea_level; break; } }
   const now={
     air:det.air_temperature, cloud:det.cloud_area_fraction, wind:det.wind_speed,
     windDir:det.wind_from_direction,
-    hum:det.relative_humidity, press:pNow, dPress:(p6-pNow),
+    hum:det.relative_humidity, press:pNow, dPress:(p6-pNow), dPress3:(p3-pNow),
     precip:precipNow, symbol:(next1.summary&&next1.summary.symbol_code)||(next6.summary&&next6.summary.symbol_code)
   };
 
@@ -289,6 +290,8 @@ function buildDays(){
   if(STATE.discharge){
     flowLevel = percentileRank(STATE.discharge.dist, STATE.discharge.latest);
   }
+  const flowStart=flowLevel;            // dag-0-nivå (anker for % av normal framover)
+  const nowPct=flowPctNow();            // % av normal nå (null hvis ingen vannføringsdata)
 
   // bygg 14 dager fra og med i dag
   const out=[];
@@ -335,10 +338,14 @@ function buildDays(){
     const scat = stabCat(dCloud, dP);
     const hs = hatchState(date, wt, md.cloud, md.precip);
 
+    // vannføring i % av normal framover: skaler nå-% med modellert nivå-bane
+    const dayPct = (nowPct!=null && flowStart>0) ? nowPct*(flowLevel/flowStart) : null;
+    const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
     const st={
-      temp:wt, cloud:cloudCat(md.cloud), time:timeWindow(), press:pcat,
-      flow:fcat, clarity, hatch:hs.cat, wind:windCat(md.wind),
-      stab:scat, season:seasonFromTemp(wt)
+      temp:wt, windAvg:md.wind, flowPct:dayPct, flowTrend:dayTrend,
+      cloud:cloudCat(md.cloud), time:timeWindow(), season:seasonFromTemp(wt),
+      airTemp:md.airMean, humidity:null, pressTrend:dP,
+      hatch:hs.cat                     // kun for visning (chips/logg/i morgen), ikke i indeksen
     };
     const idx=computeIndex(st);
 
@@ -358,10 +365,10 @@ function buildDays(){
     const recentRain = now.precip;
     const clarity = STATE.cfg.clarityOverride || clarityFromFlow(fcat, recentRain);
     const st={
-      temp:wtNow, cloud:cloudCat(now.cloud), time:timeWindowNow(),
-      press:pressCat(now.press, now.dPress), flow:fcat, clarity,
-      hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat,
-      wind:windCat(now.wind), stab:"stable", season:seasonFromTemp(wtNow)
+      temp:wtNow, windAvg:now.wind, flowPct:flowPctNow(), flowTrend:flowRelTrend(),
+      cloud:cloudCat(now.cloud), time:timeWindowNow(), season:seasonFromTemp(wtNow),
+      airTemp:now.air, humidity:now.hum, pressTrend:now.dPress3,
+      hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat   // kun for visning
     };
     const sunElNow = solarPosition(new Date(), STATE.cfg.lat, STATE.cfg.lon).elevation;
     STATE.now={ state:st, idx:computeIndex(st), wtNow, wtMeasured, fcat, clarity, windDir:now.windDir,
@@ -370,6 +377,16 @@ function buildDays(){
 }
 function flowLevel0(){ return STATE.discharge ? percentileRank(STATE.discharge.dist, STATE.discharge.latest) : 0.55; }
 function nowFlowTrend(){ return STATE.discharge ? Math.sign(STATE.discharge.trend24)*0.04 : 0; }
+/* vannføring i % av normal: bruker median av siste ~60 dager som «normal»-referanse
+   (proxy – NVE har ingen co-lokalisert sesongnormal i indeks-stien). */
+function flowMedian(){
+  const d=STATE.discharge&&STATE.discharge.dist;
+  if(!d||!d.length) return null;
+  const a=[...d].sort((x,y)=>x-y), n=a.length;
+  return n%2 ? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2;
+}
+function flowPctNow(){ const m=flowMedian(); return (m && STATE.discharge && STATE.discharge.latest!=null) ? STATE.discharge.latest/m*100 : null; }
+function flowRelTrend(){ return (STATE.discharge && STATE.discharge.latest) ? STATE.discharge.trend24/STATE.discharge.latest : 0; }
 
 /* ============================================================
    RENDERING
