@@ -334,11 +334,36 @@ const SEL_FLIES=[
   {name:"Sparkle Pupa / Superpuppan",type:"Caddis-puppe",size:"#14–16",im:"Vårfluepuppe",lat:"Trichoptera",prio:13,seasons:["forsommer","hoysommer","sensommer"],tags:["evening","highWater"],tip:"Urolig vårflueaktivitet; drift med korte løft mot slutten."},
   {name:"Steinfluenymfe / Montana",type:"Nymfe",size:"#10–12",im:"Steinflue-nymfe",lat:"Plecoptera",prio:14,seasons:["tidlig"],tags:["highWater"],tip:"Tidlig sesong/høy vannføring; fiskes som søkeflue."},
 ];
+/* --- Skogstjern / lavlands-stillevann (Østfold): små ørret + abbor i klare tjern.
+   Fjærmygg-dominert (palmermygg/klekker), småe døgnfluer, vårflue, maur; abbor på liten streamer.
+   Sesong fra isløsning (april) — fangstrapportene viser topp i mai på mygg #18–20. --- */
+const SKOGSTJERN_PERIOD_TXT={
+  tidlig:"Tidlig vår på tjerna: like etter isløsning. Fjærmygg klekker først (ofte midt på dagen når vannet varmes), og de første døgnfluene kommer. Klekker og pupper i overflatefilmen.",
+  forsommer:"Forsommer er gull på skogstjerna: tett fjærmygg-klekking morgen og kveld, døgnfluer og første vårfluer. Vak i stille viker — fisk klekker/palmermygg lavt i filmen.",
+  hoysommer:"Høysommer: fjærmygg fortsatt sentralt, vårfluer mot kveld, og landinsekter (maur, biller) på varme dager. Klart, stille vann — gå smått og fint.",
+  sensommer:"Sensommer: maur og landinsekter, fjærmygg morgen/kveld, små døgnfluer. Lavt og blankt — diskrete mønstre og lange fortommer.",
+  host:"Tidlig høst: fjærmygg og små døgnfluer, ofte god vak på milde dager. Abbor tar mindre streamer/nymfe langs kanter.",
+  utenfor:"Utenom kjernesesongen. Fjærmygg klekker så lenge det er åpent vann — smått og fint, gjerne på ettermiddagen."
+};
+const SKOGSTJERN_FLIES=[
+  {name:"Palmermygg / myggklekker",type:"Tørrflue/klekker",size:"#16–20",im:"Fjærmygg",lat:"Chironomidae",prio:1,seasons:["all"],tags:["clearLow","overcastRain"],allRound:true,tip:"Nøkkelflua i tjerna (jf. fangstrapport) — fiskes dødt i filmen, særlig grått og stille."},
+  {name:"Griffiths Gnat / myggklynge",type:"Tørrflue",size:"#16–20",im:"Fjærmygg (klynge)",lat:"Chironomidae",prio:2,seasons:["all"],tags:["clearLow"],allRound:true,tip:"Klynger av fjærmygg — dødelig på kresen ørret i blankt vann; fiskes helt dødt."},
+  {name:"CDC myggklekker / Shuttlecock",type:"Emerger",size:"#16–18",im:"Klekkende fjærmygg",lat:"Chironomidae",prio:3,seasons:["all"],tags:["overcastRain","clearLow"],tip:"Når fisken viser snute uten å ta voksen — sitter lavt i overflaten."},
+  {name:"CDC Comparadun / døgnflue",type:"Tørrflue",size:"#14–16",im:"Døgnflue (stillevann)",lat:"Leptophlebia / Baetis",prio:4,seasons:["tidlig","forsommer","hoysommer","sensommer","host"],tags:["clearLow"],tip:"Mørk vårdøgnflue (Leptophlebia) tidlig, baetis utover — fiskes dødt i vaksoner."},
+  {name:"CDC Caddis",type:"Tørrflue",size:"#14–16",im:"Voksen vårflue",lat:"Trichoptera",prio:5,seasons:["forsommer","hoysommer","sensommer"],tags:["evening","clearLow"],tip:"Mot kveld når vårfluen er aktiv; dødt eller bittesmå napp."},
+  {name:"Pheasant Tail / myggnymfe",type:"Nymfe",size:"#14–18",im:"Døgnflue-/fjærmyggnymfe",lat:"Baetis / Chironomidae",prio:6,seasons:["all"],allRound:true,tags:[],tip:"Under filmen mellom vakene; sakte, kontrollert i tjerna."},
+  {name:"Buzzer (fjærmyggpuppe)",type:"Nymfe/puppe",size:"#12–16",im:"Fjærmyggpuppe",lat:"Chironomidae",prio:7,seasons:["forsommer","hoysommer","sensommer"],tags:["overcastRain"],tip:"Stillevanns-klassiker — hengende puppe like under overflaten; svært sakte."},
+  {name:"Svart/rød maur",type:"Terrestrial",size:"#14–16",im:"Maur",lat:"Formicidae",prio:8,seasons:["hoysommer","sensommer"],tags:["clearLow"],tip:"Varme dager med maurnedfall; fiskes dødt nær land."},
+  {name:"Spent spinner",type:"Tørrflue",size:"#16–18",im:"Døgnflue (utgytt)",lat:"Ephemeroptera",prio:9,seasons:["forsommer","hoysommer","sensommer"],tags:["evening"],tip:"Spinnerfall i stille kveldsluft; ligger flatt i overflatehinnen."},
+  {name:"Liten Woolly Bugger / streamer",type:"Streamer",size:"#10–12",im:"Byttefisk / virvelløs",lat:"—",prio:10,seasons:["all"],tags:[],tip:"For abbor og søkefiske langs kanter og dropp; sakte inntak."},
+  {name:"Bibio / Black Gnat",type:"Terrestrial",size:"#14–16",im:"Hårmygg / landinsekt",lat:"Bibionidae",prio:11,seasons:["forsommer","sensommer"],tags:["clearLow"],tip:"Svart landinsekt på blankt vann; god når det svermer."},
+];
 /* flue-arketyper: elve-profilen velger arketype (flyArchetype). */
 const FLY_ARCHETYPES={
-  "kald-hoyfjellselv": { flies: LESJA_FLIES,  periodTxt: LESJA_PERIOD_TXT },
-  "hemsil":            { flies: LESJA_FLIES,  periodTxt: HEMSIL_PERIOD_TXT },
-  "sel-grayling":      { flies: SEL_FLIES,    periodTxt: SEL_PERIOD_TXT },
+  "kald-hoyfjellselv": { flies: LESJA_FLIES,      periodTxt: LESJA_PERIOD_TXT },
+  "hemsil":            { flies: LESJA_FLIES,      periodTxt: HEMSIL_PERIOD_TXT },
+  "sel-grayling":      { flies: SEL_FLIES,        periodTxt: SEL_PERIOD_TXT },
+  "skogstjern":        { flies: SKOGSTJERN_FLIES, periodTxt: SKOGSTJERN_PERIOD_TXT },
 };
 function flyArchetype(id){ return FLY_ARCHETYPES[id] || FLY_ARCHETYPES["kald-hoyfjellselv"]; }
 /* gjeldende forhold -> sett av aktive «tags» */

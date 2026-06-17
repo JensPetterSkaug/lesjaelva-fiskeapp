@@ -694,6 +694,9 @@ class Handler(BaseHTTPRequestHandler):
             "leeZones": cfg.get("leeZones"),
             "terrainFile": cfg.get("terrainFile"),
             "flyArchetype": cfg.get("flyArchetype"),
+            "flowFixed": cfg.get("flowFixed"),
+            "frostStation": cfg.get("frostStation"),
+            "frostLabel": cfg.get("frostLabel"),
             "multiTenant": SINGLE_RIVER is None,
             "contact": CONTACT,
         })

@@ -43,7 +43,8 @@ async function riverStatus(cfg){
   }
   // vannføring i % av normal (sesongnormal p50, median-fallback)
   let flowPct=null, flowTrend=0, flowLevel=0.55;
-  if(dis!=null){
+  if(cfg.flowFixed!=null){ flowPct=cfg.flowFixed; }      // fast (stillevann)
+  else if(dis!=null){
     flowLevel=pctRank(disDist,dis);
     flowTrend=dis?disTrend/dis:0;
     const nrm=await getJSON('/api/normals?station='+disStation);

@@ -117,11 +117,12 @@ async function loadWeather(){
 /* Frost: faktisk MÅLT vind + lufttemp fra nærmeste stasjon (E136 Lora) */
 async function loadObserved(){
   STATE.obsStn=null;
-  if(!STATE.cfg.hasFrost) return;
+  const fs=STATE.cfg.frostStation;                 // målt Frost-stasjon per elv (null = ingen)
+  if(!STATE.cfg.hasFrost || !fs) return;
   try{
-    const d=await getJSON(`/api/obs?source=SN16845&elements=air_temperature,wind_speed,wind_from_direction`);
+    const d=await getJSON(`/api/obs?source=${fs}&elements=air_temperature,wind_speed,wind_from_direction`);
     if(d&&d.values&&!d.error){
-      STATE.obsStn={label:"Lora (målt)", air:d.values.air_temperature, wind:d.values.wind_speed,
+      STATE.obsStn={label:`${STATE.cfg.frostLabel||"Målt"} (målt)`, air:d.values.air_temperature, wind:d.values.wind_speed,
                     windDir:d.values.wind_from_direction, time:d.time};
     }
   }catch(e){}
@@ -180,10 +181,10 @@ async function fetchStationObs(stationId, codes, ref){
 }
 /* last metadata + observasjoner for alle konfigurerte stasjoner */
 async function loadWater(){
-  STATE.water={};
-  const stations=(STATE.cfg.stations&&STATE.cfg.stations.length)?STATE.cfg.stations:[{id:STATE.cfg.station,label:STATE.cfg.station}];
-  STATE.primary=stations[0].id;
-  if(!STATE.cfg.hasKey) return;
+  STATE.water={}; STATE.watertemp=null; STATE.discharge=null; STATE.dischargeStation=null;
+  const stations=(STATE.cfg.stations&&STATE.cfg.stations.length)?STATE.cfg.stations:(STATE.cfg.station?[{id:STATE.cfg.station,label:STATE.cfg.station}]:[]);
+  STATE.primary=stations.length?stations[0].id:null;
+  if(!STATE.cfg.hasKey || !stations.length) return;   // ingen NVE-stasjoner (f.eks. skogstjern-område) -> alt modelleres
   const to=new Date(), from=new Date(to.getTime()-60*864e5);
   const ref=`${isoDate(from)}/${isoDate(to)}`;
   for(const st of stations){
@@ -354,7 +355,9 @@ function buildDays(){
                  : (nowPct!=null && flowStart>0 ? nowPct*(flowLevel/flowStart) : null);
     const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
     const st={
-      temp:wt, windAvg:md.wind, flowPct:dayPct, flowTrend:dayTrend,
+      temp:wt, windAvg:md.wind,
+      flowPct:(STATE.cfg.flowFixed!=null?STATE.cfg.flowFixed:dayPct),
+      flowTrend:(STATE.cfg.flowFixed!=null?0:dayTrend),
       cloud:cloudCat(md.cloud), time:timeWindow(), season:seasonFromTemp(wt),
       airTemp:md.airMean, humidity:null, pressTrend:dP,
       hatch:hs.cat                     // kun for visning (chips/logg/i morgen), ikke i indeksen
@@ -377,7 +380,9 @@ function buildDays(){
     const recentRain = now.precip;
     const clarity = STATE.cfg.clarityOverride || clarityFromFlow(fcat, recentRain);
     const st={
-      temp:wtNow, windAvg:now.wind, flowPct:flowPctNow(), flowTrend:flowRelTrend(),
+      temp:wtNow, windAvg:now.wind,
+      flowPct:(STATE.cfg.flowFixed!=null?STATE.cfg.flowFixed:flowPctNow()),
+      flowTrend:(STATE.cfg.flowFixed!=null?0:flowRelTrend()),
       cloud:cloudCat(now.cloud), time:timeWindowNow(), season:seasonFromTemp(wtNow),
       airTemp:now.air, humidity:now.hum, pressTrend:now.dPress3,
       hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat   // kun for visning
@@ -393,7 +398,8 @@ function nowFlowTrend(){ return STATE.discharge ? Math.sign(STATE.discharge.tren
    ±7-dagers vindu) for primærstasjonen; faller tilbake til median av siste ~60 dager. */
 async function loadFlowNormals(){
   STATE.flowNormals=null;
-  const prim=STATE.dischargeStation||(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
+  if(STATE.cfg.flowFixed!=null) return;            // fast vannføring (stillevann) -> ingen normal
+  const prim=STATE.dischargeStation;
   if(!prim || !STATE.cfg.hasKey) return;
   try{
     const n=await getJSON(`/api/normals?station=${prim}`);
@@ -519,12 +525,14 @@ function renderNowChips(){
   const tempFoot2 = O ? "modell (MET) + målt (Frost)" : `MET ved fiskesonen · ${fmt0(w.cloud)}% skydekke`;
   const windFoot2 = O ? "modell (MET) + målt (Frost)" : "m/s · retning (MET)";
 
+  const lake = STATE.cfg.flowFixed!=null;          // innsjø/tjern-område: ingen NVE-stasjon, stillevann
+  const clarFoot = STATE.cfg.clarityOverride ? "manuelt satt" : ("utledet"+((sts[0]&&sts[0].label)?` · ${sts[0].label}`:""));
   g.innerHTML=[
-    chipStations("Vanntemperatur", tempRows, tempFoot),
-    chipStations("Vannføring", flowRows, flowFoot),
+    lake ? chip("Vanntemperatur", fmt1(now.wtNow), "°", "modellert (lufttemp)") : chipStations("Vanntemperatur", tempRows, tempFoot),
+    lake ? chip("Vannføring", "Stillestående", "", "innsjø/tjern – telles nøytralt") : chipStations("Vannføring", flowRows, flowFoot),
     chipStations("Lufttemp", tempRows2, tempFoot2),
     chipStations("Vind", windRows2, windFoot2),
-    chip("Vannklarhet", CLAR_LABEL[now.clarity], "", STATE.cfg.clarityOverride?"manuelt satt":`utledet · ${sts[0].label}`),
+    chip("Vannklarhet", CLAR_LABEL[now.clarity], "", clarFoot),
     chip("Nedbør (nå)", fmt1(w.precip), "mm/t", w.hum!=null?`${fmt0(w.hum)}% fukt`:""),
     chip("Lufttrykk", fmt0(w.press), "hPa", `${PRESS_LABEL[pressCat(w.press,w.dPress)]} ${trendArrow(w.dPress,0.8)}`),
     chip("Klekking", HATCH_LABEL[now.state.hatch], "", "nå-vurdering"),
@@ -1522,10 +1530,11 @@ function applyTabs(active){
   STATE.tab=active;
   const all=HOME_BLOCKS.concat(TAB_ONLY);
   const mobile=window.matchMedia("(max-width:700px)").matches;
+  const noSec = !(STATE.cfg && STATE.cfg.secondary);    // ingen sekundærstasjon -> skjul vannstandsgraf
   document.body.classList.toggle("tab-fishon", mobile && active==="fishon");
-  if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", TAB_ONLY.includes(id)); }); return; }
+  if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", TAB_ONLY.includes(id) || (id==="dombasSec"&&noSec)); }); return; }
   const show = active==="prognose" ? HOME_BLOCKS : (TAB_BLOCKS[active]||HOME_BLOCKS);
-  all.forEach(id=>{ const e=$(id); if(e) e.classList.toggle("tab-hidden", !show.includes(id)); });
+  all.forEach(id=>{ const e=$(id); if(e) e.classList.toggle("tab-hidden", !show.includes(id) || (id==="dombasSec"&&noSec)); });
   document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===active));
 }
 function renderTomorrow(){

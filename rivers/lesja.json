@@ -36,5 +36,7 @@
     { "name": "Li / Dovre-grensa" }
   ],
   "terrainFile": "terrain/lesja.json",
-  "flyArchetype": "kald-hoyfjellselv"
+  "flyArchetype": "kald-hoyfjellselv",
+  "frostStation": "SN16845",
+  "frostLabel": "Lora"
 }

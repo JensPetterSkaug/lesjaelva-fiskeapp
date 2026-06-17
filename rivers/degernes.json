@@ -1,0 +1,31 @@
+{
+  "id": "degernes",
+  "name": "Degernes — Østfold",
+  "shortName": "Degernes",
+  "fishonTitle": "Fluevalg og bestefiskested i Degernes",
+  "eyebrow": "Innlandsfiske · skogstjern · live prognose · MET",
+  "region": "Østfold",
+  "lat": 59.2947,
+  "lon": 11.5255,
+  "altitude": 170,
+  "station": null,
+  "stations": [],
+  "weatherPoints": [
+    {
+      "label": "Degernes",
+      "lat": 59.2947,
+      "lon": 11.5255,
+      "altitude": 170
+    }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/degernes.json",
+  "flyArchetype": "skogstjern",
+  "flowFixed": 100,
+  "_todo": [
+    "Område med 53 skogstjern (Midtre Degernes GL). Vannføring er satt fast = 1 (stillestående vann) — telles nøytralt i indeksen.",
+    "Ingen NVE-stasjon i området — vanntemp modelleres fra lufttemperatur (MET).",
+    "Flue-arketype 'skogstjern' bygget på fangstrapportene (palmermygg/døgnflue/caddis for ørret + abbor)."
+  ]
+}
