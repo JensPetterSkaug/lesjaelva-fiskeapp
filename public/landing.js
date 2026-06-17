@@ -74,9 +74,11 @@ async function riverStatus(cfg){
   try{ data=await getJSON('/api/rivers'); }catch(e){ grid.innerHTML='<div class="lp-empty">Kunne ikke laste elveliste.</div>'; return; }
   const rivers=(data&&data.rivers)||[];
   if(!rivers.length){ grid.innerHTML='<div class="lp-empty">Ingen elver konfigurert ennå.</div>'; return; }
+  rivers.sort((a,b)=>(a.kind==='stillevann'?1:0)-(b.kind==='stillevann'?1:0));   // stillevann-områder nederst
   grid.innerHTML=rivers.map(r=>{
     const live=r.draft?"":`<span class="lp-live"><span class="livedot ok"></span>live</span>`;
-    const head=`<div class="lp-namerow"><div class="lp-name">${r.shortName||r.name||r.id}</div>${live}</div>`+(r.region?`<div class="lp-region">${r.region}</div>`:"");
+    const kind=(r.kind==='stillevann')?`<span class="lp-kind">(stillevann)</span>`:"";
+    const head=`<div class="lp-namerow"><div class="lp-name">${r.shortName||r.name||r.id}${kind}</div>${live}</div>`+(r.region?`<div class="lp-region">${r.region}</div>`:"");
     if(r.draft) return `<div class="lp-card lp-draft" aria-disabled="true" title="Under arbeid – kommer snart">${head}<div class="lp-badge">Under arbeid</div></div>`;
     return `<a class="lp-card" href="/${r.id}">${head}
       <div class="lp-status" id="st-${r.id}"><span class="lp-load">Laster forhold …</span></div>

@@ -126,7 +126,8 @@ def list_rivers():
                     p = load_river(fn[:-5])
                     out.append({"id": fn[:-5], "name": p.get("name"),
                                 "shortName": p.get("shortName"), "region": p.get("region"),
-                                "draft": bool(p.get("draft"))})
+                                "draft": bool(p.get("draft")),
+                                "kind": "stillevann" if p.get("flowFixed") is not None else "elv"})
                 except Exception:
                     pass
     return out
