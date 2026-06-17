@@ -15,8 +15,8 @@
       "label": "Lågen ovf. Otta"
     },
     {
-      "id": "2.150.0",
-      "label": "Lalm (Otta)"
+      "id": "2.25.0",
+      "label": "Lalm (Otta) — vannføring"
     }
   ],
   "weatherPoints": [
@@ -34,20 +34,17 @@
     }
   ],
   "secondary": {
-    "label": "Lalm",
-    "nveStation": "2.150.0",
-    "normalsStation": "2.150.0",
-    "metLat": 61.8167,
-    "metLon": 9.2737,
+    "label": "Lalm (Otta)",
+    "nveStation": "2.25.0",
+    "normalsStation": "2.25.0",
+    "metLat": 61.8175,
+    "metLon": 9.2739,
     "metAlt": 320
   },
   "leeZones": [],
   "terrainFile": "terrain/sel.json",
   "flyArchetype": "sel-grayling",
   "_todo": [
-    "Verifiser at primær temp-stasjon 2.1238.0 (Lågen ovf. Otta) treffer fiskesonen din; alternativ: 2.653.0.",
-    "Vannføring: ingen co-lokalisert måler på Lågen v/Otta — Lalm (2.150.0, Otta-grenen) brukes som referanse. Verifiser.",
-    "Terrengpunktene i terrain/sel.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
-  ],
-  "draft": true
+    "LE-kart: de 6 terrengpunktene er auto-genererte langs elve-senterlinja — kan erstattes med faktiske, navngitte fiskeplasser i sone 5 (Selsvollene) når koordinater foreligger."
+  ]
 }

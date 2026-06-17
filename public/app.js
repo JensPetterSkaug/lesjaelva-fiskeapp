@@ -200,9 +200,15 @@ async function loadWater(){
     W.temp=obs.temp; W.discharge=obs.discharge; W.stage=obs.stage;
     STATE.water[st.id]=W;
   }
-  // primærstasjon driver Fiskeindeksen (buildDays/renderMeta bruker disse)
+  // Fiskeindeksen henter hver parameter fra FØRSTE stasjon som har den
+  // (temp og vannføring kan ligge på ulike stasjoner, f.eks. Sel: temp på Lågen, vannføring på Lalm).
   const P=STATE.water[STATE.primary];
-  if(P){ STATE.station=P.meta; STATE.discharge=P.discharge; STATE.watertemp=P.temp; }
+  if(P) STATE.station=P.meta;
+  const firstWith=key=>{ for(const st of stations){ const W=STATE.water[st.id]; if(W&&W[key]) return {id:st.id,W}; } return null; };
+  const tw=firstWith("temp"), dw=firstWith("discharge");
+  STATE.watertemp = tw ? tw.W.temp : (P?P.temp:null);
+  STATE.discharge = dw ? dw.W.discharge : (P?P.discharge:null);
+  STATE.dischargeStation = dw ? dw.id : STATE.primary;   // hvilken stasjon flow-normalen skal hentes fra
 }
 /* vannføringskategori for en gitt stasjon (egen 60-dagers fordeling) */
 function stationFlowCat(W){
@@ -386,7 +392,7 @@ function nowFlowTrend(){ return STATE.discharge ? Math.sign(STATE.discharge.tren
    ±7-dagers vindu) for primærstasjonen; faller tilbake til median av siste ~60 dager. */
 async function loadFlowNormals(){
   STATE.flowNormals=null;
-  const prim=(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
+  const prim=STATE.dischargeStation||(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
   if(!prim || !STATE.cfg.hasKey) return;
   try{
     const n=await getJSON(`/api/normals?station=${prim}`);
@@ -721,7 +727,8 @@ async function refresh(){
   try{
     await loadConfig();
     // vær + alle vannstasjoner + lokale værpunkt + målt (Frost) parallelt
-    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved(), loadFlowNormals()]);
+    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
+    await loadFlowNormals();   // trenger STATE.dischargeStation fra loadWater
     buildDays();
     STATE.selected=null;
     renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow(); renderFishon();
