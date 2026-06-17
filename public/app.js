@@ -204,7 +204,9 @@ async function loadWater(){
   // (temp og vannføring kan ligge på ulike stasjoner, f.eks. Sel: temp på Lågen, vannføring på Lalm).
   const P=STATE.water[STATE.primary];
   if(P) STATE.station=P.meta;
-  const firstWith=key=>{ for(const st of stations){ const W=STATE.water[st.id]; if(W&&W[key]) return {id:st.id,W}; } return null; };
+  // avvis utdaterte serier (stasjon kan ha sluttet å rapportere) — eldre enn 5 d teller som «ingen data»
+  const fresh=s=>s&&s.time&&(Date.now()-new Date(s.time).getTime())<5*864e5;
+  const firstWith=key=>{ for(const st of stations){ const W=STATE.water[st.id]; if(W&&fresh(W[key])) return {id:st.id,W}; } return null; };
   const tw=firstWith("temp"), dw=firstWith("discharge");
   STATE.watertemp = tw ? tw.W.temp : (P?P.temp:null);
   STATE.discharge = dw ? dw.W.discharge : (P?P.discharge:null);
@@ -314,15 +316,13 @@ function buildDays(){
       md={key, date, airMean:air, airMax:air+4, airMin:air-4, cloud:60, wind:3, windDir:null, press:1010, precip:1.2, sym:"partlycloudy_day", clim:true};
     }
     // --- modellér vanntemp ---
-    if(i===0 && wt==null){ wt=estimateWaterTemp(date); }
-    if(i>0 || wt==null){
-      const base = (i===0 ? (wt!=null?wt:estimateWaterTemp(date)) : prev.wt);
-      // mål: lufttemp minus ~1, med smeltevannsgulv ved høy vannføring
-      let target = md.airMean - 1.0;
-      let floor = flowLevel>0.6 ? 6 : (flowLevel>0.42 ? 4.5 : -99);
-      target = Math.max(target, floor);
-      target = Math.max(0, Math.min(19, target));
-      wt = base + 0.3*(target-base);
+    // mål: lufttemp minus ~1, med smeltevannsgulv ved høy vannføring
+    const wtTarget=air=>{ let t=air-1.0; const fl=flowLevel>0.6?6:(flowLevel>0.42?4.5:-99); return Math.max(0,Math.min(19,Math.max(t,fl))); };
+    if(i===0 && wt==null){      // ingen måling -> anker på NÅVÆRENDE lufttemp (dagsmiddelet kan være skjevt av nattetimer)
+      wt=wtTarget((now&&now.air!=null)?now.air:md.airMean);
+    }
+    if(i>0){
+      wt = prev.wt + 0.3*(wtTarget(md.airMean)-prev.wt);
     }
     const warm = wt>=7;
 
@@ -1108,21 +1108,24 @@ function renderTempChart(){
     <path d="${fcPath}" fill="none" stroke="#e0935a" stroke-width="2" stroke-dasharray="6 4"/>
     ${axL}${xlab}<text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">°C</text>
   </svg>`;
-  if(leg) leg.innerHTML=`
-    <span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Målt siste 30 d (NVE)</span>
-    <span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Modellert prognose</span>
+  const measured = hist.length>0;       // har vi målt NVE-historikk, eller bare modellert?
+  if(leg) leg.innerHTML=
+    (measured?`<span class="lg"><span class="sw" style="border-color:#4fb6a8"></span>Målt siste 30 d (NVE)</span>`:"")+
+    `<span class="lg"><span class="sw" style="border-color:#e0935a;border-top-style:dashed"></span>Modellert${measured?" prognose":" (ingen NVE-temp)"}</span>
     <span class="lg"><span class="sw" style="background:rgba(111,194,122,.4);border:none;height:10px;width:14px;border-radius:2px"></span>Insektvennlig 10–16°</span>`;
   // analyse
-  const nowV=hist.length?hist[hist.length-1].v:fc[0].v;
-  const b3=hist.length?closestByTime(hist,nowMs-3*864e5):null;
+  const nowV=measured?hist[hist.length-1].v:fc[0].v;
+  const b3=measured?closestByTime(hist,nowMs-3*864e5):null;
   const d3=b3?nowV-b3.v:0;
   const end=fc.length?fc[fc.length-1].v:nowV;
   const trendW=d=>d>=0.6?"stigende":(d<=-0.6?"fallende":"stabil");
   const band1016 = nowV>=10&&nowV<=16;
-  cap.innerHTML=`Vanntemp nå <b>${fmt1(nowV)} °C</b>, <b>${trendW(d3)}</b> siste 3 d. `+
-    `Prognose mot dag 14: <b>${fmt1(end)} °C</b>. `+
-    (band1016?`Innenfor det insektvennlige vinduet (10–16 °C). `:(nowV>16?`Over optimal — hold øye med stressgrensen ved 18–20 °C. `:`Under optimal — insektaktiviteten er dempet. `))+
-    `<span class="muted">Kilde: NVE Sildre (målt) + modellert prognose fra lufttemperatur. Vekt i indeksen: 0,25.</span>`;
+  const zoneTxt = band1016?`Innenfor det insektvennlige vinduet (10–16 °C). `:(nowV>16?`Over optimal — hold øye med stressgrensen ved 18–20 °C. `:`Under optimal — insektaktiviteten er dempet. `);
+  cap.innerHTML = measured
+    ? `Vanntemp nå <b>${fmt1(nowV)} °C</b>, <b>${trendW(d3)}</b> siste 3 d. Prognose mot dag 14: <b>${fmt1(end)} °C</b>. `+zoneTxt+
+      `<span class="muted">Kilde: NVE Sildre (målt) + modellert prognose fra lufttemperatur. Vekt i indeksen: 0,25.</span>`
+    : `Vanntemp <b>(modellert)</b> nå <b>${fmt1(nowV)} °C</b>, prognose mot dag 14: <b>${fmt1(end)} °C</b>. `+zoneTxt+
+      `<span class="muted">Ingen aktiv NVE-vanntemp-stasjon for denne elva — temperaturen modelleres fra lufttemperatur (demping + smeltevannsgulv). Vekt i indeksen: 0,25.</span>`;
 }
 
 /* ============================================================

@@ -8,11 +8,15 @@
   "lat": 60.8653,
   "lon": 8.5206,
   "altitude": 620,
-  "station": "12.551.0",
+  "station": "12.197.0",
   "stations": [
     {
+      "id": "12.197.0",
+      "label": "Grunke (øvre regulering)"
+    },
+    {
       "id": "12.551.0",
-      "label": "Hemsil v/Hemsedal sentrum"
+      "label": "Hemsil v/Hemsedal (temp)"
     }
   ],
   "weatherPoints": [
@@ -29,14 +33,20 @@
       "altitude": 560
     }
   ],
-  "secondary": null,
+  "secondary": {
+    "label": "Grunke (regulering)",
+    "nveStation": "12.197.0",
+    "normalsStation": "12.197.0",
+    "metLat": 60.9503,
+    "metLon": 8.7031,
+    "metAlt": 871
+  },
   "leeZones": [],
   "terrainFile": "terrain/hemsil.json",
   "flyArchetype": "hemsil",
   "_todo": [
-    "Primær temp-stasjon 12.551.0 (Hemsil v/Hemsedal sentrum) — kun vanntemp, ingen vannføring i NVE. Indeksen kjører på temp + vær.",
-    "Sekundær vannstandsgraf er av (secondary=null) — Hemsil er regulert; vurder Eikredammen (12.181.0) som referanse hvis ønskelig.",
-    "Terrengpunktene i terrain/hemsil.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
-  ],
-  "draft": true
+    "Vanntemp: ingen aktiv NVE-temp-stasjon på Hemsil (12.551.0 rapporterer ikke) — temperaturen modelleres fra lufttemperatur. Bytt til måling hvis en stasjon begynner å rapportere igjen, eller koble lokal temp-logger.",
+    "Vannføring: hentes fra Grunke (12.197.0), en øvre regulering i Hemsil-systemet — Hemsil er regulert, så føring ved fiskesona styres av kraftverksslipp. Representativitet usikker.",
+    "LE-kart: 6 auto-genererte terrengpunkt — kan erstattes med faktiske, navngitte fiskeplasser når koordinater foreligger."
+  ]
 }
