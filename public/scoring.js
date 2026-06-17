@@ -139,12 +139,18 @@ function computeIndex(state){
   return {score,parts,g,msg,cls,limiting};
 }
 
-function verdict(v){
-  if(v>=78)return ["Utmerket","#4fb6a8"];
-  if(v>=64)return ["Veldig bra","#6fc27a"];
-  if(v>=50)return ["Lovende","#c9b85a"];
-  if(v>=36)return ["Variabelt","#e0935a"];
-  return ["Tøft","#d8624a"];
+/* merkelapp + farge etter indeks (0–100) OG snittvind (m/s).
+   Vind ≤ 3,0 m/s = rolig (tørrflue-vennlig); > 3,0 m/s = søk le.
+   Returnerer [full label (vind-avhengig), farge, kort label (til trange visninger)]. */
+function verdict(v, windAvg){
+  const windy = (windAvg!=null && windAvg>3.0);
+  let color, calm, gust, short;
+  if(v>=90){      color="#4fb6a8"; calm="Perfekt tørrfluefiske";     gust="Bra, men søk LE-plasser";          short="Perfekt"; }
+  else if(v>=80){ color="#6fc27a"; calm="Veldig bra tørrfluefiske";  gust="Muligheter, men søk LE-plasser";   short="Veldig bra"; }
+  else if(v>=70){ color="#c9b85a"; calm="Gode muligheter";           gust="Ok muligheter, men mye vind";      short="Gode forhold"; }
+  else if(v>=50){ color="#e0935a"; calm="Ok muligheter";             gust="Utfordrende";                      short="Ok"; }
+  else {          color="#d8624a"; calm="Finn et annet sted å fiske"; gust="Finn et annet sted å fiske";       short="Lite lovende"; }
+  return [windy?gust:calm, color, short];
 }
 
 /* ============================================================

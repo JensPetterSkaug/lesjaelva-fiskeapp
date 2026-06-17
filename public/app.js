@@ -450,7 +450,7 @@ function renderHero(){
     label=dayLabel(d.date)+(d.clim?" · klimatologi":"");
   }
   $("score").textContent=idx.score;
-  const [vt,vc]=verdict(idx.score);
+  const [vt,vc]=verdict(idx.score, st.windAvg);
   $("verdict").textContent=vt; $("verdict").style.color=vc;
   $("fill").style.width=idx.score+"%"; $("fill").style.background=vc;
   $("gaugeWhen").innerHTML = (sel==null?"Nå":`<span class="reset" id="resetNow" style="cursor:pointer;color:var(--teal)">‹ Nå</span> · ${label}`);
@@ -668,7 +668,7 @@ function dayLabel(d){ return `${DOW[d.getDay()]} ${d.getDate()}. ${MON[d.getMont
 function renderForecast(){
   const strip=$("fcStrip");
   strip.innerHTML=STATE.days.map(d=>{
-    const [vt,vc]=verdict(d.idx.score);
+    const [vt,vc,vs]=verdict(d.idx.score, d.md.wind);
     const sel=(STATE.selected===d.i)?"sel":"";
     const wtTxt=`${fmt1(d.wt)}°`;
     const wd=d.md.windDir;
@@ -678,7 +678,7 @@ function renderForecast(){
       <div class="dt">${d.date.getDate()}.${d.date.getMonth()+1}</div>
       <div class="ico">${symEmoji(d.md.sym)}</div>
       <div class="fsc" style="color:${vc}">${d.idx.score}</div>
-      <div class="fvd" style="color:${vc}">${vt}</div>
+      <div class="fvd" style="color:${vc}">${vs}</div>
       <div class="fmeta"><span class="wt">${wtTxt}</span> · ${FLOW_LABEL[d.fcat]}<br>${fmt0(d.md.cloud)}% · ${fmt1(d.precip)}mm<br><span class="fwind">${windLine}</span></div>
     </div>`;
   }).join("");
@@ -1357,11 +1357,11 @@ function renderDailyReport(){
   rows.forEach(r=>{ const n=r.best.p.navn||leePlace(r.best.p.lon); placeCount[n]=(placeCount[n]||0)+1; });
   const topPlace=Object.entries(placeCount).sort((a,b)=>b[1]-a[1])[0];
   const peakRow=rows.find(r=>r.best.r.score===peak);
-  const [pvt,pvc]=verdict(peak);
+  const [pvt,pvc]=verdict(peak, peakRow?peakRow.h.wind:null);
 
   // tabellrader
   const body=rows.map(r=>{
-    const [vt,vc]=verdict(r.best.r.score);
+    const [vt,vc,vs]=verdict(r.best.r.score, r.h.wind);
     const [lt,lemo]=LIGHT_LABEL(r);
     const name=r.best.p.navn||leePlace(r.best.p.lon);
     const [stag,sc]=shelterTag(r.best.r.shelter);
@@ -1372,7 +1372,7 @@ function renderDailyReport(){
     const pArrow=trendArrow(r.h.dP,0.8);  // dP = p(+6t)−nå; negativ = fallende trykk -> ↓
     return `<tr>
       <td class="rp-h">${String(r.h.hour).padStart(2,"0")}</td>
-      <td class="rp-sc" style="color:${vc}"><b>${r.best.r.score}</b><span class="rp-vd">${vt}</span></td>
+      <td class="rp-sc" style="color:${vc}"><b>${r.best.r.score}</b><span class="rp-vd">${vs}</span></td>
       <td class="rp-pl"><a href="https://www.google.com/maps/dir/?api=1&destination=${dst}" target="_blank" rel="noopener">${name}</a>${shadeMark}${r.forced?` <span class="rp-swap">variasjon</span>`:""}</td>
       <td class="rp-li">${lemo} ${lt}<span class="rp-sub">${Math.round(r.sp.elevation)}° sol · ${fmt0(r.h.cloud)}% sky</span></td>
       <td class="rp-wi">${windArrow(wd,13,sc)} ${windTxt}<span class="rp-sub" style="color:${sc}">${stag}${r.best.r.shelter!=null?` ${Math.round(r.best.r.shelter)}°`:""}</span></td>
@@ -1432,7 +1432,7 @@ async function logForecast(){
   if(!STATE.now) return;
   const now=STATE.now, w=now.now;
   const prim=STATE.water[STATE.primary]||{}, sec=secondaryWater();
-  const [vt]=verdict(now.idx.score);
+  const [vt]=verdict(now.idx.score, now.state.windAvg);
   const row={
     dato: osloDateKey(new Date()),
     river: (STATE.cfg&&STATE.cfg.id)||"lesja",
@@ -1532,7 +1532,7 @@ function renderTomorrow(){
   const host=$("tomorrowSec"); if(!host) return;
   const d=STATE.days&&STATE.days[1];
   if(!d){ host.innerHTML=`<div class="panel"><div class="empty">Venter på data …</div></div>`; return; }
-  const [vt,vc]=verdict(d.idx.score);
+  const [vt,vc]=verdict(d.idx.score, d.md.wind);
   let leTxt="–";
   if(STATE.terrain&&STATE.terrain.length&&d.md.windDir!=null){
     const best=STATE.terrain.map(p=>({p,s:shelterDeg(p,d.md.windDir)})).sort((a,b)=>b.s-a.s)[0];
