@@ -63,13 +63,20 @@ async function riverStatus(cfg){
 }
 
 (async function(){
+  // dato under overskriften – understreker at dataene er ferske i dag
+  const dEl=document.getElementById('lpDate');
+  if(dEl){
+    const d=new Date().toLocaleDateString('nb-NO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    dEl.innerHTML=`<span class="livedot ok"></span> Live i dag · <span class="d">${d.charAt(0).toUpperCase()+d.slice(1)}</span>`;
+  }
   const grid=document.getElementById('riverGrid');
   let data;
   try{ data=await getJSON('/api/rivers'); }catch(e){ grid.innerHTML='<div class="lp-empty">Kunne ikke laste elveliste.</div>'; return; }
   const rivers=(data&&data.rivers)||[];
   if(!rivers.length){ grid.innerHTML='<div class="lp-empty">Ingen elver konfigurert ennå.</div>'; return; }
   grid.innerHTML=rivers.map(r=>{
-    const head=`<div class="lp-name">${r.shortName||r.name||r.id}</div>`+(r.region?`<div class="lp-region">${r.region}</div>`:"");
+    const live=r.draft?"":`<span class="lp-live"><span class="livedot ok"></span>live</span>`;
+    const head=`<div class="lp-namerow"><div class="lp-name">${r.shortName||r.name||r.id}</div>${live}</div>`+(r.region?`<div class="lp-region">${r.region}</div>`:"");
     if(r.draft) return `<div class="lp-card lp-draft" aria-disabled="true" title="Under arbeid – kommer snart">${head}<div class="lp-badge">Under arbeid</div></div>`;
     return `<a class="lp-card" href="/${r.id}">${head}
       <div class="lp-status" id="st-${r.id}"><span class="lp-load">Laster forhold …</span></div>
