@@ -62,8 +62,10 @@ Vind = snittvind fra yr (ikke kast); vannføring = nivå i % av normal × trend-
 **Datakilder:** yr.no (lufttemp, luftfuktighet, lufttrykk-tendens, skydekke+tid, snittvind) og NVE Sildre (vanntemp,
 vannføring i % av normal + trend).
 
-**Forbehold:** «% av normal» bruker median av siste ~60 dagers vannføring som referanse (proxy, ikke 15-års
-sesongnormal). Vanntemperatur for kommende dager *modelleres* fra lufttemperatur (demping + smeltevannsgulv), ikke målt.
+**Forbehold:** «% av normal» bruker NVE-sesongnormal (15 års median p50 per dag-på-året, ±7-dagers vindu) for
+primærstasjonen; faller tilbake til median av siste ~60 dager hvis normal mangler. Føring framover estimeres ved å
+skalere dagens føring med den modellerte nivå-banen og dele på dag-spesifikk normal. Vanntemperatur for kommende
+dager *modelleres* fra lufttemperatur (demping + smeltevannsgulv), ikke målt.
 Luftfuktighet og 3-timers trykk-tendens finnes per time for de nærmeste døgnene; lenger ut blir prognose-faktorene
 grovere. Dette er angler-heuristikk, ikke en validert biologisk ligning.
 

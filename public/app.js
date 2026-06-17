@@ -338,8 +338,13 @@ function buildDays(){
     const scat = stabCat(dCloud, dP);
     const hs = hatchState(date, wt, md.cloud, md.precip);
 
-    // vannføring i % av normal framover: skaler nå-% med modellert nivå-bane
-    const dayPct = (nowPct!=null && flowStart>0) ? nowPct*(flowLevel/flowStart) : null;
+    // vannføring i % av normal framover: estimert føring (nå × modellert nivå-bane)
+    // delt på dag-spesifikk sesongnormal (normalen synker f.eks. utover sommeren).
+    const estDis = (STATE.discharge && STATE.discharge.latest!=null && flowStart>0)
+                 ? STATE.discharge.latest*(flowLevel/flowStart) : null;
+    const nrmDay = flowNormalFor(date);
+    const dayPct = (estDis!=null && nrmDay) ? estDis/nrmDay*100
+                 : (nowPct!=null && flowStart>0 ? nowPct*(flowLevel/flowStart) : null);
     const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
     const st={
       temp:wt, windAvg:md.wind, flowPct:dayPct, flowTrend:dayTrend,
@@ -377,15 +382,39 @@ function buildDays(){
 }
 function flowLevel0(){ return STATE.discharge ? percentileRank(STATE.discharge.dist, STATE.discharge.latest) : 0.55; }
 function nowFlowTrend(){ return STATE.discharge ? Math.sign(STATE.discharge.trend24)*0.04 : 0; }
-/* vannføring i % av normal: bruker median av siste ~60 dager som «normal»-referanse
-   (proxy – NVE har ingen co-lokalisert sesongnormal i indeks-stien). */
+/* vannføring i % av normal: ekte NVE-sesongnormal (15 års median p50 per dag-på-året,
+   ±7-dagers vindu) for primærstasjonen; faller tilbake til median av siste ~60 dager. */
+async function loadFlowNormals(){
+  STATE.flowNormals=null;
+  const prim=(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
+  if(!prim || !STATE.cfg.hasKey) return;
+  try{
+    const n=await getJSON(`/api/normals?station=${prim}`);
+    if(n && !n.error && n.discharge && Array.isArray(n.discharge.p50)){
+      STATE.flowNormals=n.discharge.p50;        // 367-array indeksert på dag-på-året
+      STATE.flowNormalYears=n.years;
+    }
+  }catch(e){}
+}
+/* sesongnormal (m³/s) for en gitt dato, eller null */
+function flowNormalFor(date){
+  if(!STATE.flowNormals) return null;
+  const v=STATE.flowNormals[dayOfYear(date||new Date())];
+  return (v!=null && v>0) ? v : null;
+}
 function flowMedian(){
   const d=STATE.discharge&&STATE.discharge.dist;
   if(!d||!d.length) return null;
   const a=[...d].sort((x,y)=>x-y), n=a.length;
   return n%2 ? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2;
 }
-function flowPctNow(){ const m=flowMedian(); return (m && STATE.discharge && STATE.discharge.latest!=null) ? STATE.discharge.latest/m*100 : null; }
+function flowPctNow(){
+  if(!(STATE.discharge && STATE.discharge.latest!=null)) return null;
+  const nrm=flowNormalFor(new Date());            // ekte sesongnormal
+  if(nrm) return STATE.discharge.latest/nrm*100;
+  const m=flowMedian();                            // fallback: 60-dagers median
+  return m ? STATE.discharge.latest/m*100 : null;
+}
 function flowRelTrend(){ return (STATE.discharge && STATE.discharge.latest) ? STATE.discharge.trend24/STATE.discharge.latest : 0; }
 
 /* ============================================================
@@ -692,7 +721,7 @@ async function refresh(){
   try{
     await loadConfig();
     // vær + alle vannstasjoner + lokale værpunkt + målt (Frost) parallelt
-    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
+    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved(), loadFlowNormals()]);
     buildDays();
     STATE.selected=null;
     renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow(); renderFishon();
