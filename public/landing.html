@@ -17,7 +17,14 @@
   .lp-card .lp-name{font-size:18px;font-weight:650;color:var(--ink);letter-spacing:-0.01em}
   .lp-card .lp-region{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-top:8px}
   .lp-card .lp-go{color:var(--mut);font-size:13px;margin-top:12px}
+  a.lp-card .lp-go{color:var(--teal)}
   .lp-empty{color:var(--mut2);font-size:14px;padding:24px 0}
+  /* utkast: ikke klikkbart, dempet, med merke */
+  .lp-card.lp-draft{opacity:.62;cursor:not-allowed}
+  .lp-card.lp-draft:hover{border-color:var(--line);transform:none}
+  .lp-badge{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:10px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--amber);
+    border:1px solid rgba(224,147,90,.4);background:rgba(224,147,90,.12);border-radius:20px;padding:3px 10px}
 </style>
 </head>
 <body>
@@ -34,11 +41,14 @@
       const grid=document.getElementById("riverGrid");
       const rivers=(d&&d.rivers)||[];
       if(!rivers.length){ grid.innerHTML='<div class="lp-empty">Ingen elver konfigurert ennå.</div>'; return; }
-      grid.innerHTML=rivers.map(r=>`<a class="lp-card" href="/${r.id}">
-        <div class="lp-name">${r.shortName||r.name||r.id}</div>
-        ${r.region?`<div class="lp-region">${r.region}</div>`:""}
-        <div class="lp-go">Åpne dashbord →</div>
-      </a>`).join("");
+      grid.innerHTML=rivers.map(r=>{
+        const inner=`<div class="lp-name">${r.shortName||r.name||r.id}</div>`
+          + (r.region?`<div class="lp-region">${r.region}</div>`:"")
+          + (r.draft?`<div class="lp-badge">Under arbeid</div>`:`<div class="lp-go">Åpne dashbord →</div>`);
+        return r.draft
+          ? `<div class="lp-card lp-draft" aria-disabled="true" title="Under arbeid – kommer snart">${inner}</div>`
+          : `<a class="lp-card" href="/${r.id}">${inner}</a>`;
+      }).join("");
     }).catch(()=>{ document.getElementById("riverGrid").innerHTML='<div class="lp-empty">Kunne ikke laste elveliste.</div>'; });
   </script>
 </body>

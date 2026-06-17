@@ -48,5 +48,6 @@
     "Verifiser at primær temp-stasjon 2.1238.0 (Lågen ovf. Otta) treffer fiskesonen din; alternativ: 2.653.0.",
     "Vannføring: ingen co-lokalisert måler på Lågen v/Otta — Lalm (2.150.0, Otta-grenen) brukes som referanse. Verifiser.",
     "Terrengpunktene i terrain/sel.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
-  ]
+  ],
+  "draft": true
 }

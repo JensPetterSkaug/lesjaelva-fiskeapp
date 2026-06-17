@@ -37,5 +37,6 @@
     "Primær temp-stasjon 12.551.0 (Hemsil v/Hemsedal sentrum) — kun vanntemp, ingen vannføring i NVE. Indeksen kjører på temp + vær.",
     "Sekundær vannstandsgraf er av (secondary=null) — Hemsil er regulert; vurder Eikredammen (12.181.0) som referanse hvis ønskelig.",
     "Terrengpunktene i terrain/hemsil.json er auto-genererte langs elva (horisont fra Kartverket DTM) — finjuster plassering til faktiske fiskeplasser."
-  ]
+  ],
+  "draft": true
 }
