@@ -125,7 +125,8 @@ def list_rivers():
                 try:
                     p = load_river(fn[:-5])
                     out.append({"id": fn[:-5], "name": p.get("name"),
-                                "shortName": p.get("shortName"), "region": p.get("region")})
+                                "shortName": p.get("shortName"), "region": p.get("region"),
+                                "draft": bool(p.get("draft"))})
                 except Exception:
                     pass
     return out
@@ -613,8 +614,19 @@ class Handler(BaseHTTPRequestHandler):
         seg = path.strip("/")
         if path == "/" or path == "":
             return self.serve_static("/index.html" if SINGLE_RIVER else "/landing.html")
-        # /<id> (uten punktum/skråstrek) som matcher en elve-profil -> appen
+        # /<id> (uten punktum/skråstrek) som matcher en elve-profil -> appen.
+        # Utkast (draft) skjules på multi-tenant-deploy uten ?preview=1 -> til forsiden.
         if "/" not in seg and "." not in seg and river_exists(seg):
+            try:
+                is_draft = bool(load_river(seg).get("draft"))
+            except Exception:
+                is_draft = False
+            preview = (qs.get("preview") or ["0"])[0] == "1"
+            if SINGLE_RIVER is None and is_draft and not preview:
+                self.send_response(302)
+                self.send_header("Location", "/")
+                self.end_headers()
+                return
             return self.serve_static("/index.html")
 
         return self.serve_static(path)
