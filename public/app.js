@@ -205,13 +205,14 @@ async function loadWater(){
   const P=STATE.water[STATE.primary];
   if(P) STATE.station=P.meta;
   // avvis utdaterte serier (stasjon kan ha sluttet å rapportere) — eldre enn 5 d teller som «ingen data»
-  const fresh=s=>s&&s.time&&(Date.now()-new Date(s.time).getTime())<5*864e5;
-  const firstWith=key=>{ for(const st of stations){ const W=STATE.water[st.id]; if(W&&fresh(W[key])) return {id:st.id,W}; } return null; };
+  const firstWith=key=>{ for(const st of stations){ const W=STATE.water[st.id]; if(W&&freshSeries(W[key])) return {id:st.id,W}; } return null; };
   const tw=firstWith("temp"), dw=firstWith("discharge");
   STATE.watertemp = tw ? tw.W.temp : (P?P.temp:null);
   STATE.discharge = dw ? dw.W.discharge : (P?P.discharge:null);
   STATE.dischargeStation = dw ? dw.id : STATE.primary;   // hvilken stasjon flow-normalen skal hentes fra
 }
+/* fersk NVE-serie? (eldre enn 5 dager = stasjonen rapporterer ikke lenger) */
+function freshSeries(s){ return !!(s && s.time && (Date.now()-new Date(s.time).getTime())<5*864e5); }
 /* vannføringskategori for en gitt stasjon (egen 60-dagers fordeling) */
 function stationFlowCat(W){
   if(!W||!W.discharge) return null;
@@ -485,19 +486,19 @@ function renderNowChips(){
   // --- vanntemperatur, én rad per stasjon ---
   const tempRows=sts.map(st=>{
     const W=STATE.water[st.id];
-    if(W&&W.temp){ const a=trendArrow(W.temp.trend24,0.2);
+    if(W&&freshSeries(W.temp)){ const a=trendArrow(W.temp.trend24,0.2);
       return {label:st.label, val:`${fmt1(W.temp.latest)}° ${a}`, cls:a==="↑"?"up":(a==="↓"?"down":"")}; }
     if(st.id===STATE.primary && now.wtNow!=null) return {label:st.label, val:`${fmt1(now.wtNow)}°`, cls:""};
     return {label:st.label, val:"–", cls:""};
   });
-  const hasPrimTemp=STATE.water[STATE.primary]&&STATE.water[STATE.primary].temp;
+  const hasPrimTemp=STATE.water[STATE.primary]&&freshSeries(STATE.water[STATE.primary].temp);
   const tempFoot = hasPrimTemp ? "målt · NVE"
                  : (STATE.cfg.tempOverride!=null ? "manuelt satt" : (STATE.cfg.hasKey?"estimat (modell)":"estimat · legg inn nøkkel"));
 
   // --- vannføring, én rad per stasjon (med kategori) ---
   const flowRows=sts.map(st=>{
     const W=STATE.water[st.id];
-    if(W&&W.discharge){ const tr=W.discharge.trend24, a=trendArrow(tr,0.3), cat=stationFlowCat(W);
+    if(W&&freshSeries(W.discharge)){ const tr=W.discharge.trend24, a=trendArrow(tr,0.3), cat=stationFlowCat(W);
       return {label:st.label, cls:tr>0.3?"up":(tr<-0.3?"down":""),
         val:`${fmt1(W.discharge.latest)} ${a} <span class="catx">${FLOW_LABEL[cat]}</span>`}; }
     return {label:st.label, val:"–", cls:""};
