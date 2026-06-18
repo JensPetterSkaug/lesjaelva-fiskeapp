@@ -1,0 +1,46 @@
+{
+  "id": "rena",
+  "name": "Rena",
+  "shortName": "Rena",
+  "fishonTitle": "Fluevalg og bestefiskested i Rena",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Østerdalen",
+  "lat": 61.28,
+  "lon": 11.44,
+  "altitude": 243,
+  "station": "2.611.0",
+  "stations": [
+    {
+      "id": "2.686.0",
+      "label": "Rena ndf. Storsjøen dam (temp)"
+    },
+    {
+      "id": "2.611.0",
+      "label": "Storsjøen ndf. Øra (vannføring)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Åkrestrømmen",
+      "lat": 61.3447,
+      "lon": 11.399,
+      "altitude": 250
+    },
+    {
+      "label": "Osa",
+      "lat": 61.21,
+      "lon": 11.49,
+      "altitude": 240
+    }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/rena.json",
+  "flyArchetype": "sel-grayling",
+  "_todo": [
+    "Vanntemp: ingen aktiv NVE-temp-stasjon på Søndre Rena (2.686.0 Rena ndf. Storsjøen dam sluttet å rapportere sep. 2025) — temperaturen modelleres fra lufttemp. Bytt til måling hvis stasjonen begynner å rapportere igjen.",
+    "Vannføring: Rena er regulert (Storsjøen-dammen styrer slippet på hele fiskestrekket). Nærmeste representative måler er 2.611.0 Storsjøen ndf. Øra, men den er p.t. utdatert (siste obs des. 2025) → føringen modelleres. Oppgraderes automatisk hvis stasjonen gjenopptar.",
+    "Vannstandsgraf: ingen aktiv vannstand-stasjon (1000) på strekket → secondary=null (grafen skjult).",
+    "LE-kart: 21 navngitte fiskeplasser fra KML (Storsjøen-dam ned mot Osa), 236–249 moh. Parkering/teltplass/fiskecamp luket bort."
+  ]
+}
