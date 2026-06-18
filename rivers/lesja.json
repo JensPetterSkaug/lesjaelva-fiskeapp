@@ -5,9 +5,9 @@
   "fishonTitle": "Fluevalg og bestefiskested i Lesjaelva",
   "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
   "region": "Gudbrandsdalen",
-  "lat": 62.1235,
-  "lon": 8.8678,
-  "altitude": 560,
+  "lat": 62.085,
+  "lon": 9.0302,
+  "altitude": 540,
   "station": "2.346.0",
   "stations": [
     { "id": "2.346.0", "label": "Lesjavatnet" },
