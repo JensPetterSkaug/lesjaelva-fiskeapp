@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
-<link rel="stylesheet" href="/styles.css?v=20260617g">
+<link rel="stylesheet" href="/styles.css?v=20260618b">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -16,7 +16,6 @@
     <div class="head-left">
       <p class="eyebrow">Elvefiske · live prognose · NVE Sildre + MET</p>
       <h1 class="main-h1">Lesjaelva — øvre Gudbrandsdalslågen, sone 7</h1>
-      <p class="sub" id="stationSub">Stasjon 2.346.0 Lesjaverk · laster …</p>
       <h1 class="fishon-h1">Fluevalg og bestefiskested i Lesjaelva</h1>
     </div>
     <div class="head-right">
@@ -30,6 +29,7 @@
   <!-- NÅ-STATUS -->
   <section class="hero" id="heroSec">
     <div class="gauge-card">
+      <button class="chip-i hero-i" type="button" data-info="index" aria-label="Om fiskeindeksen" aria-expanded="false">i</button>
       <div class="gauge">
         <div><span class="gnum" id="score">–</span><span class="gmax"> /100</span></div>
         <div class="verdict" id="verdict">–</div>
@@ -39,6 +39,7 @@
         <div class="gauge-when" id="gaugeWhen">Nå</div>
         <div class="limiting" id="limiting"></div>
       </div>
+      <div class="chip-pop hero-pop" id="heroPop" data-pop="index" hidden></div>
     </div>
 
     <div class="now-grid" id="nowGrid">
@@ -50,6 +51,16 @@
 
   <!-- FISHON – ved elva (kun mobil-fane) -->
   <div id="fishonSec"></div>
+
+  <!-- 14-DAGERS PROGNOSE -->
+  <section class="panel forecast" id="forecast">
+    <div class="fc-head">
+      <h3>14-dagers prognose</h3>
+      <p class="muted fc-note">Klikk en dag for å se den i måleren over. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
+    </div>
+    <div class="fc-strip" id="fcStrip"><div class="fc-loading">Laster prognose …</div></div>
+    <div class="fc-spark" id="fcSpark"></div>
+  </section>
 
   <!-- TO HOVEDSPALTER -->
   <div class="cols" id="colsRow">
@@ -63,16 +74,6 @@
       <div id="hatchBox" class="hatchbox">–</div>
     </section>
   </div>
-
-  <!-- 14-DAGERS PROGNOSE -->
-  <section class="panel forecast" id="forecast">
-    <div class="fc-head">
-      <h3>14-dagers prognose</h3>
-      <p class="muted fc-note">Klikk en dag for å se den i måleren over. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
-    </div>
-    <div class="fc-strip" id="fcStrip"><div class="fc-loading">Laster prognose …</div></div>
-    <div class="fc-spark" id="fcSpark"></div>
-  </section>
 
   <!-- LE-KART (interaktivt, terreng + vind) -->
   <section class="panel mapsec" id="mapsec">
@@ -178,6 +179,7 @@
   </section>
 
   <footer>
+    <p class="sub stations-foot" id="stationSub"></p>
     <div id="sources">
       <b>Kilder (live):</b>
       <a href="https://sildre.nve.no/station/2.346.0" target="_blank" rel="noopener">NVE Sildre / HydAPI</a> for vanntemperatur, vannføring &amp; vannstand ·
@@ -238,7 +240,7 @@
   <button data-tab="imorgen" aria-label="I morgen"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>I morgen</span></button>
 </nav>
 
-<script src="/scoring.js?v=20260617g"></script>
-<script src="/app.js?v=20260617g"></script>
+<script src="/scoring.js?v=20260618b"></script>
+<script src="/app.js?v=20260618b"></script>
 </body>
 </html>

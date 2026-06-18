@@ -59,11 +59,29 @@ body.tab-fishon .head-left .fishon-h1{display:block}
 .gauge-when{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--teal);text-transform:uppercase}
 .limiting{font-size:12.5px;color:var(--mut);margin-top:5px}
 .limiting b{color:var(--ink)}
+.nowsum{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:baseline;margin-top:7px;font-size:12px;color:var(--mut)}
+.nowsum .ns-lead{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);width:100%;margin-bottom:1px}
+.nowsum .ns{white-space:nowrap}
+.nowsum .ns b{color:var(--ink);font-weight:600}
+.nowsum .ns + .ns::before{content:"·";margin-right:8px;color:var(--mut);opacity:.5}
+.nowsum .ns-lim{color:var(--ink)}
+.nowsum .ns-lim b{color:#e0935a}
+.nowsum .ns-note{width:100%;font-size:11px;opacity:.7;margin-top:2px}
 
 /* now grid */
 .now-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px;align-content:start}
-.chip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;overflow:hidden}
-.chip .ct{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.chip{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;overflow:hidden}
+.chip .ct{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+/* info-ikon + popover (accordion – .chip har overflow:hidden) */
+.chip-i{margin-left:auto;flex:0 0 auto;width:16px;height:16px;padding:0;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mut);font:italic 600 10px/1 var(--mono);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.chip-i:hover,.chip-i[aria-expanded="true"]{border-color:var(--teal-dim);color:var(--teal)}
+.chip-pop{margin-top:9px;border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:10px 11px;font-size:11.5px;line-height:1.45;color:var(--mut)}
+.chip-pop[hidden]{display:none}
+.chip-pop b{color:var(--ink);font-weight:600}
+.chip .cs.ts{font-size:10.5px;opacity:.85;margin-top:5px}
+.gauge-card{position:relative}
+.hero-i{position:absolute;top:0;right:0}
+.hero-pop{margin:12px 0 0;text-align:left}
 .chip .cv{font-size:21px;font-weight:600;letter-spacing:-0.01em;display:flex;align-items:baseline;gap:6px}
 .chip .cu{font-size:12px;color:var(--mut);font-weight:400}
 .chip .cs{font-size:11.5px;color:var(--mut);margin-top:4px}

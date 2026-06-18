@@ -247,6 +247,7 @@ function parseWeather(){
   for(const e of ts){ if(new Date(e.time).getTime()-t0>=3*36e5){ p3=e.data.instant.details.air_pressure_at_sea_level; break; } }
   for(const e of ts){ if(new Date(e.time).getTime()-t0>=6*36e5){ p6=e.data.instant.details.air_pressure_at_sea_level; break; } }
   const now={
+    time:n0.time,
     air:det.air_temperature, cloud:det.cloud_area_fraction, wind:det.wind_speed,
     windDir:det.wind_from_direction,
     hum:det.relative_humidity, press:pNow, dPress:(p6-pNow), dPress3:(p3-pNow),
@@ -441,9 +442,51 @@ function setLive(status, txt){
 const FLOW_LABEL={optimal:"Optimal",risingfromlow:"Stigende fra lav",high:"Litt høy",lowclear:"Lav & klar",flood:"Flom",drought:"Svært lav"};
 const CLAR_LABEL={tinge:"Lett farget",gin:"Krystallklart",stained:"Moderat grumset",muddy:"Sjokoladebrun"};
 const HATCH_LABEL={active:"Aktiv klekking",likely:"Sannsynlig",sparse:"Sparsom",none:"Ingen"};
+
+/* info-bokser (Endring 1). Optimale verdier = de samme tersklene som scoring.js bruker:
+   sTemp (10–14°), sFlowLevel (90–115%), sAirTemp (15–22°), sWindAvg (<2 m/s, port >6),
+   sPressTrend (−4..−2 hPa/3t), sClar (lett farget), sHatch (aktiv), gates() (porter). */
+const INFO={
+  index:`<b>Fiskeindeks 0–100.</b> Vektet sum av sju faktorer: vanntemp 25 %, vind 25 %, vannføring 20 %, lys 15 %, lufttemp 5 %, luftfuktighet 5 %, lufttrykk-tendens 5 %. <b>Porter</b> trekker hele indeksen ned ved vanntemp ≥18–20 °C, snittvind >6 m/s eller flom ≥175 % av normal.<br><b>Optimalt:</b> 100 = alle faktorer i sitt beste intervall samtidig.<br><b>Kilde:</b> NVE Sildre (vann) + MET/yr (vær).`,
+  temp:`<b>Optimalt: 10–14 °C</b> (full skår). Avtar mot kaldt (&lt;7 °C → 0,45; &lt;4 °C → 0,25) og varmt (16–18 °C → 0,70). ≥18 °C gir stress-port, ≥20 °C nær stopp.<br><b>Hvorfor:</b> Insektklekking og fiskeaktivitet topper rundt 10–16 °C; varmt vann gir oksygenstress for ørret.<br><b>Kilde:</b> NVE Sildre (målt), ellers modellert fra lufttemp.`,
+  flow:`<b>Optimalt: 90–115 % av sesongnormal</b> (full skår). Lav (&lt;75 %) og høy (&gt;140 %) trekker ned; ≥175 % = flom-port.<br><b>Hvorfor:</b> Normal vannføring gir stabile standplasser og god drivføde uten å farge vannet.<br><b>Kilde:</b> NVE Sildre — % av 15-års sesongnormal per dag-i-året.`,
+  airtemp:`<b>Optimalt: 15–22 °C</b> (full skår). Kjølig (&lt;10 °C → 0,65) og varmt (&gt;26 °C → 0,60) trekker ned.<br><b>Hvorfor:</b> Mild luft følger ofte insektaktivitet og overflatefiske.<br><b>Kilde:</b> MET/yr ved fiskesonen, + målt (Frost) der stasjon finnes.`,
+  wind:`<b>Optimalt: under ~2 m/s snittvind</b> (full skår). 3–4 m/s merkbart (0,60), &gt;6 m/s = vind-port (tørrfluepresentasjon kollapser).<br><b>Hvorfor:</b> Lite vind gir presis presentasjon og synlige vak; mye vind ødelegger driften.<br><b>Kilde:</b> MET/yr snittvind (ikke kast), + målt (Frost).`,
+  clarity:`<b>Optimalt: «lett farget»</b> (full skår) &gt; krystallklart &gt; moderat grumset &gt; sjokoladebrun.<br><b>Hvorfor:</b> Litt farge skjuler fortom og gjør fisken mindre sky, men beholder sikt.<br><b>Kilde:</b> Utledet fra vannføring + nedbør (kan overstyres manuelt).`,
+  precip:`<b>Optimalt: lett nedbør.</b> Ikke en egen indeksfaktor, men påvirker indirekte via vannføring og vannklarhet — kraftig regn farger og hever vannet.<br><b>Hvorfor:</b> Lett regn kan utløse klekking og aktivisere fisk; styrtregn ødelegger sikten.<br><b>Kilde:</b> MET/yr (nedbør pr. time) + relativ luftfuktighet.`,
+  press:`<b>Optimalt: lett fallende trykk</b> (−4 til −2 hPa / 3 t = full skår). Stabilt ~nøytralt (0,80); stigende trekker ned (+4 hPa → 0,30).<br><b>Hvorfor:</b> Fallende trykk før en front trigger ofte aktiv fisk; stigende høytrykk demper.<br><b>Kilde:</b> MET/yr — trykktendens over 3 t.`,
+  hatch:`<b>Optimalt: «aktiv klekking»</b> (full skår) &gt; sannsynlig &gt; sparsom &gt; ingen.<br><b>Hvorfor:</b> Klekkende insekter får fisken til å spise i overflaten — kjernen i tørrfluefiske.<br><b>Kilde:</b> Modellert fra vanntemp, årstid og vær (klekke-/flueråd-modul).`
+};
+/* tidsstempel for en måling (Endring 2). daily=true for NVE døgnserier (ingen klokkeslett). */
+function fmtMeasTime(iso, daily){
+  if(!iso) return "";
+  const d=new Date(iso); if(isNaN(d)) return "";
+  const today = osloDateKey(d)===osloDateKey(new Date());
+  const dateStr = d.toLocaleDateString("no-NO",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Europe/Oslo"});
+  if(daily) return today ? "i dag" : dateStr;
+  const timeStr = d.toLocaleTimeString("no-NO",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Oslo"});
+  return today ? `i dag kl. ${timeStr}` : `${dateStr} kl. ${timeStr}`;
+}
+function infoMarkup(key){
+  if(!INFO[key]) return ["",""];
+  return [`<button class="chip-i" type="button" data-info="${key}" aria-label="Mer info" aria-expanded="false">i</button>`,
+          `<div class="chip-pop" data-pop="${key}" hidden>${INFO[key]}</div>`];
+}
 const PRESS_LABEL={falling:"Fallende",stable:"Stabilt",slowrise:"Sakte stigende",bluebird:"Klart etter front",lowflat:"Lavt/flatt"};
 
 function trendArrow(v,eps){ if(v>eps)return "↑"; if(v<-eps)return "↓"; return "→"; }
+
+/* nå-oppsummering: kort kvalitetsord per indeksbidrag, begrensende faktor markert */
+const NS_WORD = s => s>=0.85?"svært god" : s>=0.70?"god" : s>=0.55?"grei" : s>=0.40?"middels" : s>=0.25?"svak" : "dårlig";
+function nowSummaryHTML(idx){
+  const lim=idx.limiting.key;
+  const items=idx.parts.map(p=>{
+    const mark=p.key===lim;
+    return `<span class="ns${mark?" ns-lim":""}">${PART_LABELS[p.key]} <b>${NS_WORD(p.s)}</b>${mark?` (${p.s.toFixed(2)})`:""}</span>`;
+  }).join("");
+  return `<div class="nowsum"><span class="ns-lead">Nå-situasjon</span>${items}`
+       + `<span class="ns-note">Uthevet = faktoren som begrenser indeksen mest.</span></div>`;
+}
 
 function renderHero(){
   const sel=STATE.selected;
@@ -460,8 +503,7 @@ function renderHero(){
   $("verdict").textContent=vt; $("verdict").style.color=vc;
   $("fill").style.width=idx.score+"%"; $("fill").style.background=vc;
   $("gaugeWhen").innerHTML = (sel==null?"Nå":`<span class="reset" id="resetNow" style="cursor:pointer;color:var(--teal)">‹ Nå</span> · ${label}`);
-  const lim=idx.limiting;
-  $("limiting").innerHTML = `Begrensende faktor: <b>${PART_LABELS[lim.key]}</b> (delskår ${lim.s.toFixed(2)})`;
+  $("limiting").innerHTML = nowSummaryHTML(idx);
   if($("resetNow")) $("resetNow").onclick=()=>selectDay(null);
 
   // gate
@@ -474,13 +516,19 @@ function renderHero(){
   renderHatch(sel);
 }
 
-function chip(ct,cv,cu,cs,csClass){
-  return `<div class="chip"><div class="ct">${ct}</div><div class="cv">${cv}${cu?`<span class="cu">${cu}</span>`:""}</div>${cs?`<div class="cs ${csClass||""}">${cs}</div>`:""}</div>`;
+function chip(ct,cv,cu,cs,csClass,key,ts){
+  const [ib,ip]=infoMarkup(key);
+  return `<div class="chip"><div class="ct">${ct}${ib}</div><div class="cv">${cv}${cu?`<span class="cu">${cu}</span>`:""}</div>`
+       + (cs?`<div class="cs ${csClass||""}">${cs}</div>`:"")
+       + (ts?`<div class="cs ts">${ts}</div>`:"") + ip + `</div>`;
 }
 /* boks med én rad per stasjon: [{label,val,cls}] */
-function chipStations(title, rows, footer){
+function chipStations(title, rows, footer, key, ts){
+  const [ib,ip]=infoMarkup(key);
   const body=rows.map(r=>`<div class="cv2"><span class="cl">${r.label}</span><span class="cvv ${r.cls||''}">${r.val}</span></div>`).join("");
-  return `<div class="chip"><div class="ct">${title}</div>${body}${footer?`<div class="cs">${footer}</div>`:""}</div>`;
+  return `<div class="chip"><div class="ct">${title}${ib}</div>${body}`
+       + (footer?`<div class="cs">${footer}</div>`:"")
+       + (ts?`<div class="cs ts">${ts}</div>`:"") + ip + `</div>`;
 }
 function renderNowChips(){
   const g=$("nowGrid");
@@ -527,15 +575,26 @@ function renderNowChips(){
 
   const lake = STATE.cfg.flowFixed!=null;          // innsjø/tjern-område: ingen NVE-stasjon, stillevann
   const clarFoot = STATE.cfg.clarityOverride ? "manuelt satt" : ("utledet"+((sts[0]&&sts[0].label)?` · ${sts[0].label}`:""));
+
+  // --- måletidspunkt per chip (Endring 2): «Målt» kun for faktiske målinger, ellers MET/modell ---
+  const firstFresh=param=>{ for(const st of sts){ const W=STATE.water[st.id]; if(W&&freshSeries(W[param])) return W[param].time; } return null; };
+  const tTemp=firstFresh("temp"), tFlow=firstFresh("discharge"), metT=w.time;
+  const tsTemp = tTemp ? `Målt ${fmtMeasTime(tTemp,true)}` : `Modellert · MET ${fmtMeasTime(metT)}`;
+  const tsFlow = lake ? "" : (tFlow ? `Målt ${fmtMeasTime(tFlow,true)}` : `Modellert · MET ${fmtMeasTime(metT)}`);
+  const tsAirWind = (O&&O.time) ? `Målt ${fmtMeasTime(O.time)}` : `MET ${fmtMeasTime(metT)}`;
+  const tsClar = tFlow ? `Utledet · ${fmtMeasTime(tFlow,true)}` : `Utledet · MET ${fmtMeasTime(metT)}`;
+  const tsMet = `MET ${fmtMeasTime(metT)}`;
+  const tsHatch = `Vurdert ${fmtMeasTime(metT)}`;
+
   g.innerHTML=[
-    lake ? chip("Vanntemperatur", fmt1(now.wtNow), "°", "modellert (lufttemp)") : chipStations("Vanntemperatur", tempRows, tempFoot),
-    lake ? chip("Vannføring", "Stillestående", "", "innsjø/tjern – telles nøytralt") : chipStations("Vannføring", flowRows, flowFoot),
-    chipStations("Lufttemp", tempRows2, tempFoot2),
-    chipStations("Vind", windRows2, windFoot2),
-    chip("Vannklarhet", CLAR_LABEL[now.clarity], "", clarFoot),
-    chip("Nedbør (nå)", fmt1(w.precip), "mm/t", w.hum!=null?`${fmt0(w.hum)}% fukt`:""),
-    chip("Lufttrykk", fmt0(w.press), "hPa", `${PRESS_LABEL[pressCat(w.press,w.dPress)]} ${trendArrow(w.dPress,0.8)}`),
-    chip("Klekking", HATCH_LABEL[now.state.hatch], "", "nå-vurdering"),
+    lake ? chip("Vanntemperatur", fmt1(now.wtNow), "°", "modellert (lufttemp)", null, "temp", tsTemp) : chipStations("Vanntemperatur", tempRows, tempFoot, "temp", tsTemp),
+    lake ? chip("Vannføring", "Stillestående", "", "innsjø/tjern – telles nøytralt", null, "flow", tsFlow) : chipStations("Vannføring", flowRows, flowFoot, "flow", tsFlow),
+    chipStations("Lufttemp", tempRows2, tempFoot2, "airtemp", tsAirWind),
+    chipStations("Vind", windRows2, windFoot2, "wind", tsAirWind),
+    chip("Vannklarhet", CLAR_LABEL[now.clarity], "", clarFoot, null, "clarity", tsClar),
+    chip("Nedbør", fmt1(w.precip), "mm/t", w.hum!=null?`${fmt0(w.hum)}% fukt`:"", null, "precip", tsMet),
+    chip("Lufttrykk", fmt0(w.press), "hPa", `${PRESS_LABEL[pressCat(w.press,w.dPress)]} ${trendArrow(w.dPress,0.8)}`, null, "press", tsMet),
+    chip("Klekking", HATCH_LABEL[now.state.hatch], "", "", null, "hatch", tsHatch),
   ].join("");
 }
 
@@ -805,6 +864,19 @@ function metDailyPrecip(wx){
 }
 function doyFromKey(key){ const p=key.split("-").map(Number); const s=Date.UTC(p[0],0,0); return Math.floor((Date.UTC(p[0],p[1]-1,p[2])-s)/864e5); }
 function normAt(arr,doy){ if(!arr) return null; if(arr[doy]!=null) return arr[doy]; for(let w=1;w<=6;w++){ if(arr[((doy-1+w)%366)+1]!=null) return arr[((doy-1+w)%366)+1]; if(arr[((doy-1-w+366)%366)+1]!=null) return arr[((doy-1-w+366)%366)+1]; } return null; }
+/* Endring 5: anslå persentil-rang (0–100) for en verdi innenfor sesongfordelingen for
+   ÉN dag-i-året, ved lineær interpolasjon mellom p10/p25/p50/p75/p90. Datum-uavhengig
+   tolkning: «hvor lavt/høyt ligger vannstanden vs. det normale FOR DENNE UKA», i stedet
+   for «% under flerårsmedianen» (som leste som et permanent underskudd). */
+function seasonRank(v, ctrl){
+  const pts=ctrl.filter(p=>p[1]!=null);
+  if(v==null || pts.length<2) return null;
+  if(v<=pts[0][1]) return pts[0][0];
+  if(v>=pts[pts.length-1][1]) return pts[pts.length-1][0];
+  for(let i=0;i<pts.length-1;i++){ const [pa,va]=pts[i],[pb,vb]=pts[i+1];
+    if(v>=va && v<=vb) return vb===va ? pa : pa+(pb-pa)*(v-va)/(vb-va); }
+  return null;
+}
 
 /* vannstandsmodell: resesjon mot FLERÅRIG baseflow + nedbørsrespons.
    baseflow forankres i 15-års årsminimum (normals), ikke bare siste 30d. */
@@ -959,16 +1031,20 @@ function renderDombasChart(){
   const now=histS[histS.length-1].v, end=fc[fc.length-1].stage;
   const dir = end<now-0.02 ? "synkende" : (end>now+0.02 ? "stigende" : "flat");
   const rainDays=fc.filter(f=>f.precip>=2).map(f=>osloDateKey(f.date).slice(8,10)+"."+osloDateKey(f.date).slice(5,7));
-  // sammenlign mot sesongnormal i dag
+  // sammenlign mot sesongnormal: persentil-rang for ÅRSTIDEN (ikke % vs flerårsmedian)
   let normTxt="";
   if(hasNorm){
     const dy=doyFromKey(histS[histS.length-1].date);
-    const med=normAt(nS.p50,dy), p10=normAt(nS.p10,dy);
-    if(med){
-      const pct=Math.round((now-med)/med*100);
-      const under10=(p10!=null && now<p10);
-      normTxt=` Mot normalen for årstiden (median ${fmt2(med)} m) ligger elva nå <b>${pct>0?"+":""}${pct}%</b>`+
-        (under10?` — <b>under 10-persentilen</b>, et utpreget lavvanns-/tidlig resesjonsår.`:`.`);
+    const med=normAt(nS.p50,dy);
+    const rank=seasonRank(now,[[10,normAt(nS.p10,dy)],[25,normAt(nS.p25,dy)],[50,med],[75,normAt(nS.p75,dy)],[90,normAt(nS.p90,dy)]]);
+    if(rank!=null){
+      const r=Math.round(rank);
+      const band = rank>=75 ? "høyt for årstiden"
+                 : rank>=25 ? "normalt for årstiden"
+                 : rank>=10 ? "i underkant av normalen"
+                 : "lavt for årstiden (tørt år)";
+      const yr=D.normals.years;
+      normTxt=` Mot sesongnormalen for denne uka (${yr[0]}–${yr[1]}) ligger vannstanden <b>${band}</b> — rundt <b>${r}. persentil</b>${med?` (normal-median ${fmt2(med)} m)`:""}.`;
     }
   }
   cap.innerHTML=`Vannstand nå <b>${fmt2(now)} m</b> (vannføring ${fmt2(flowByDate[histS[histS.length-1].date]||0)} m³/s).`+normTxt+
@@ -1517,7 +1593,7 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","colsRow","forecast","mapsec","reportsec","tempSec","dombasSec","pressSec","logsec"];
+const HOME_BLOCKS=["heroSec","gate","forecast","colsRow","mapsec","reportsec","tempSec","dombasSec","pressSec","logsec"];
 const TAB_BLOCKS={
   dagsrapport:["reportsec"],
   fishon:["fishonSec","mapsec"],
@@ -1576,6 +1652,25 @@ if($("reportInfoBtn")) $("reportInfoBtn").onclick=()=>{
   btn.setAttribute("aria-expanded", open?"true":"false");
 };
 $("settingsBtn").onclick=openModal;
+
+/* info-popovers (Endring 1): klikk «i» åpner/lukker boksen; klikk utenfor lukker alle */
+document.addEventListener("click", e=>{
+  const btn=e.target.closest("[data-info]");
+  if(btn){
+    const pop=document.querySelector(`[data-pop="${btn.getAttribute("data-info")}"]`);
+    const willOpen = pop && pop.hasAttribute("hidden");
+    document.querySelectorAll(".chip-pop").forEach(p=>p.setAttribute("hidden",""));
+    document.querySelectorAll("[data-info]").forEach(b=>b.setAttribute("aria-expanded","false"));
+    if(pop && willOpen){ pop.removeAttribute("hidden"); btn.setAttribute("aria-expanded","true"); }
+    e.stopPropagation(); return;
+  }
+  if(!e.target.closest(".chip-pop")){
+    document.querySelectorAll(".chip-pop").forEach(p=>p.setAttribute("hidden",""));
+    document.querySelectorAll("[data-info]").forEach(b=>b.setAttribute("aria-expanded","false"));
+  }
+});
+if($("heroPop")) $("heroPop").innerHTML=INFO.index;
+
 $("saveObs").onclick=saveObs;
 $("ob_dato").value=osloDateKey(new Date());
 loadObsList();

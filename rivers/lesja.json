@@ -14,8 +14,7 @@
     { "id": "2.303.0", "label": "Dombås" }
   ],
   "weatherPoints": [
-    { "label": "Brustugubrue", "lat": 62.0850, "lon": 9.0302, "altitude": 540 },
-    { "label": "Leirmo", "lat": 62.1650, "lon": 8.6489, "altitude": 600 }
+    { "label": "Brustugubrue", "lat": 62.0850, "lon": 9.0302, "altitude": 540 }
   ],
   "secondary": {
     "label": "Dombås",
