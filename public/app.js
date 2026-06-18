@@ -1010,7 +1010,7 @@ function renderDombasChart(){
     ${grid}
     ${normBand}${normMed}
     <line x1="${pL}" y1="${baseY}" x2="${pL+pw}" y2="${baseY}" stroke="rgba(126,154,152,.4)" stroke-dasharray="2 5"/>
-    <text x="${pL+4}" y="${(parseFloat(baseY)-4)}" font-size="10" fill="#52706e">baseflow ~${fmt2(B)} m (15 år)</text>
+    <text x="${pL+4}" y="${(parseFloat(baseY)-4)}" font-size="10" fill="#52706e">baseflow ~${fmt2(B)} m (${D.normals?D.normals.years[0]+"–"+D.normals.years[1]:"15 år"})</text>
     ${bars}
     <line x1="${todayX}" y1="${pT}" x2="${todayX}" y2="${H-pB}" stroke="rgba(79,182,168,.5)" stroke-width="1" stroke-dasharray="4 3"/>
     <text x="${todayX}" y="${pT+10}" text-anchor="middle" font-size="10" fill="#4fb6a8">i dag</text>
@@ -1047,7 +1047,8 @@ function renderDombasChart(){
       normTxt=` Mot sesongnormalen for denne uka (${yr[0]}–${yr[1]}) ligger vannstanden <b>${band}</b> — rundt <b>${r}. persentil</b>${med?` (normal-median ${fmt2(med)} m)`:""}.`;
     }
   }
-  cap.innerHTML=`Vannstand nå <b>${fmt2(now)} m</b> (vannføring ${fmt2(flowByDate[histS[histS.length-1].date]||0)} m³/s).`+normTxt+
+  const qNow=flowByDate[histS[histS.length-1].date];
+  cap.innerHTML=`Vannstand nå <b>${fmt2(now)} m</b>${qNow!=null?` (vannføring ${fmt2(qNow)} m³/s)`:""}.`+normTxt+
     ` Prognose: <b>${dir}</b> mot <b>~${fmt2(end)} m</b> om 7 døgn. `+
     (rainDays.length?`Nedbør ${rainDays.join(", ")} demper nedgangen.`:`Lite nedbør ventet — jevn resesjon.`)+
     ` <span class="muted">Baseflow ~${fmt2(B)} m forankret i flerårig sommer-lavvann (p25, mai–okt, ${D.normals?D.normals.years[0]+"–"+D.normals.years[1]:"15 år"}); resesjon (k=${(Math.round(D.fc.k*100)/100).toString().replace(".",",")}) fra 30-dagers trend + MET-nedbør. Grovt estimat — usikkerheten øker med tid.</span>`;
