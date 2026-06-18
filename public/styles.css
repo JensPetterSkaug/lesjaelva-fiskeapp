@@ -240,6 +240,7 @@ body.tab-fishon .head-left .fishon-h1{display:block}
 
 /* dagsrapport – time for time */
 .reportsec{margin-bottom:14px}
+.fc-merged{margin:18px 0 0;padding-top:16px;border-top:1px solid var(--line)}
 .reportsec .fc-head{align-items:flex-start;flex-wrap:nowrap;gap:10px}
 .reportsec .fc-head h3{flex:1 1 auto;min-width:0}
 .rp-info-btn{font-size:15px;flex:0 0 auto}

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
-<link rel="stylesheet" href="/styles.css?v=20260618g">
+<link rel="stylesheet" href="/styles.css?v=20260618h">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -53,28 +53,28 @@
   <!-- FISHON – ved elva (kun mobil-fane) -->
   <div id="fishonSec"></div>
 
-  <!-- 14-DAGERS PROGNOSE -->
+  <!-- 14-DAGERS PROGNOSE + DAGSRAPPORT (slått sammen: klikk en dag → oppdaterer time-for-time under) -->
   <section class="panel forecast" id="forecast">
     <div class="fc-head">
       <h3>14-dagers prognose</h3>
-      <p class="muted fc-note">Klikk en dag for å se den i måleren over. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
+      <p class="muted fc-note">Klikk en dag for å se den i måleren over og i time-for-time-rapporten under. Dag 1–9: MET-prognose · dag 10–14: klimatologi (lav sikkerhet).</p>
     </div>
     <div class="fc-strip" id="fcStrip"><div class="fc-loading">Laster prognose …</div></div>
     <div class="fc-spark" id="fcSpark"></div>
+
+    <div class="reportsec fc-merged" id="reportsec">
+      <div class="fc-head">
+        <h3>Dagsrapport — time for time <span class="muted" id="reportWhen"></span></h3>
+        <button class="iconbtn rp-info-btn" id="reportInfoBtn" title="Om indeksen" aria-label="Om indeksen" aria-expanded="false">ℹ</button>
+      </div>
+      <div class="rp-infopop" id="reportInfoPop" hidden>
+        <p class="muted fc-note">Beste fiskeplass blant elvepunktene time for time. Modellen veier solhøyde/lys, terrengskygge på plassen, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet. Klikk en dag i prognosen for en annen dato (krever MET-timesprognose, ~2–3 døgn fram). Tabellen viser døgnet fra kl 06 til 23. Ingen plass foreslås mer enn 4 timer på rad — da byttes det til nest beste plass («variasjon») for å spre fisket.</p>
+        <div class="rp-weights" id="reportWeights"></div>
+      </div>
+      <div class="chartcap rp-summary" id="reportCap"></div>
+      <div id="reportBody"><div class="empty">Laster dagsrapport …</div></div>
+    </div>
   </section>
-
-  <!-- TO HOVEDSPALTER -->
-  <div class="cols" id="colsRow">
-    <section class="panel breakdown">
-      <h3>Bidrag til indeksen <span class="muted" id="bdWhen"></span></h3>
-      <div id="bars"></div>
-    </section>
-
-    <section class="panel hatch">
-      <h3>Klekking &amp; flueråd <span class="muted" id="hatchWhen"></span></h3>
-      <div id="hatchBox" class="hatchbox">–</div>
-    </section>
-  </div>
 
   <!-- LE-KART (interaktivt, terreng + vind) -->
   <section class="panel mapsec" id="mapsec">
@@ -86,20 +86,6 @@
     <div id="leeMap" class="leemap"></div>
     <div class="chartcap" id="leeCap"></div>
     <div class="leelist" id="leeList"></div>
-  </section>
-
-  <!-- DAGSRAPPORT – time for time -->
-  <section class="panel reportsec" id="reportsec">
-    <div class="fc-head">
-      <h3>Dagsrapport — time for time <span class="muted" id="reportWhen"></span></h3>
-      <button class="iconbtn rp-info-btn" id="reportInfoBtn" title="Om indeksen" aria-label="Om indeksen" aria-expanded="false">ℹ</button>
-    </div>
-    <div class="rp-infopop" id="reportInfoPop" hidden>
-      <p class="muted fc-note">Beste fiskeplass blant elvepunktene time for time. Modellen veier solhøyde/lys, terrengskygge på plassen, le for vinden, vindstyrke, trykkfall, vanntemp, klekking og klarhet. Klikk en dag i prognosen for en annen dato (krever MET-timesprognose, ~2–3 døgn fram). Tabellen viser døgnet fra kl 06 til 23. Ingen plass foreslås mer enn 4 timer på rad — da byttes det til nest beste plass («variasjon») for å spre fisket.</p>
-      <div class="rp-weights" id="reportWeights"></div>
-    </div>
-    <div class="chartcap rp-summary" id="reportCap"></div>
-    <div id="reportBody"><div class="empty">Laster dagsrapport …</div></div>
   </section>
 
   <!-- VANNTEMPERATUR: HISTORIKK + PROGNOSE -->
@@ -179,6 +165,18 @@
     <div class="obslist" id="obsList"></div>
   </section>
 
+  <!-- KLEKKING & FLUERÅD (nederst, over Bidrag til indeksen) -->
+  <section class="panel hatch" id="hatchSec">
+    <h3>Klekking &amp; flueråd <span class="muted" id="hatchWhen"></span></h3>
+    <div id="hatchBox" class="hatchbox">–</div>
+  </section>
+
+  <!-- BIDRAG TIL INDEKSEN (helt nederst – bånd) -->
+  <section class="panel breakdown" id="breakdownSec">
+    <h3>Bidrag til indeksen <span class="muted" id="bdWhen"></span></h3>
+    <div id="bars"></div>
+  </section>
+
   <footer>
     <p class="sub stations-foot" id="stationSub"></p>
     <div id="sources">
@@ -241,7 +239,7 @@
   <button data-tab="imorgen" aria-label="I morgen"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>I morgen</span></button>
 </nav>
 
-<script src="/scoring.js?v=20260618g"></script>
-<script src="/app.js?v=20260618g"></script>
+<script src="/scoring.js?v=20260618h"></script>
+<script src="/app.js?v=20260618h"></script>
 </body>
 </html>

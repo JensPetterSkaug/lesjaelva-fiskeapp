@@ -1609,9 +1609,9 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","forecast","colsRow","mapsec","reportsec","tempSec","dombasSec","pressSec","logsec"];
+const HOME_BLOCKS=["heroSec","gate","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec"];
 const TAB_BLOCKS={
-  dagsrapport:["reportsec"],
+  dagsrapport:["forecast"],          // dagsrapporten er nå slått sammen med 14-dagers prognose
   fishon:["fishonSec","mapsec"],
   fiskerapport:["logsec"],
   imorgen:["tomorrowSec"]
