@@ -1,0 +1,53 @@
+{
+  "id": "hallingdal",
+  "name": "Hallingdalselva — Ål til Gol",
+  "shortName": "Hallingdalselva",
+  "fishonTitle": "Fluevalg og bestefiskested i Hallingdalselva",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Hallingdal",
+  "lat": 60.663,
+  "lon": 8.778,
+  "altitude": 300,
+  "station": "12.9.0",
+  "stations": [
+    {
+      "id": "12.9.0",
+      "label": "Oppsjø bru (vannføring + vannstand)"
+    },
+    {
+      "id": "12.608.0",
+      "label": "Hallingdalselva v/Nesbyen (vanntemp)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Torpo",
+      "lat": 60.6687,
+      "lon": 8.7943,
+      "altitude": 281
+    },
+    {
+      "label": "Gol",
+      "lat": 60.6982,
+      "lon": 9.011,
+      "altitude": 192
+    }
+  ],
+  "secondary": {
+    "label": "Oppsjø bru",
+    "nveStation": "12.9.0",
+    "normalsStation": "12.9.0",
+    "metLat": 60.637,
+    "metLon": 8.588,
+    "metAlt": 360
+  },
+  "leeZones": [],
+  "terrainFile": "terrain/hallingdal.json",
+  "flyArchetype": "hemsil",
+  "_todo": [
+    "Vanntemp: hentes fra 12.608.0 Hallingdalselva v/Nesbyen — SAMME elv, ~10 km nedstrøms fiskesonen (alle temp-stasjoner PÅ Ål–Gol-strekket er døde: 12.550.0 Vermefoss, 12.306.0 Svenkerud, 12.305.0 ndf. Dokkelvi). Godt proxy; temp ved fiskesonen kan være litt kjøligere enn nedstrøms. Bytt til en strekk-stasjon hvis en gjenopptar.",
+    "Vannføring + vannstand: 12.9.0 Oppsjø bru (rett ovf. fiskesonens øvre ende, ndf. Strondafjorden). Representerer øvre/sentrale strekk der de fleste fiskeplassene ligger; vannføringen øker nedstrøms mot Gol (Svenkerud 12.167.0 ~47 vs Oppsjø ~11 m³/s).",
+    "LE-kart: 9 navngitte fiskeplasser fra bruker (Satakroken/Ål → Gol), 192–363 moh — bratt elveprofil, alle på dalbunn.",
+    "Flueprofil: gjenbruker «hemsil» (ørret-dominert, regulert Hallingdal-dalelv; samme dalføre som Hemsil)."
+  ]
+}

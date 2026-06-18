@@ -1,0 +1,45 @@
+{
+  "id": "holselva",
+  "name": "Holselva — Hol",
+  "shortName": "Holselva",
+  "fishonTitle": "Fluevalg og bestefiskested i Holselva",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Hallingdal",
+  "lat": 60.582,
+  "lon": 8.388,
+  "altitude": 465,
+  "station": "12.614.0",
+  "stations": [
+    {
+      "id": "12.614.0",
+      "label": "Kvinda (sideelv – vanntemp)",
+      "tempOnly": true
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Hol",
+      "lat": 60.585,
+      "lon": 8.36,
+      "altitude": 480
+    },
+    {
+      "label": "Strandafjorden",
+      "lat": 60.58,
+      "lon": 8.42,
+      "altitude": 445
+    }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/holselva.json",
+  "flyArchetype": "hemsil",
+  "fishingCardUrl": "https://www.inatur.no/fiske/54fd6b25e4b0391e35bbabc9",
+  "_todo": [
+    "KOORDINATER ER OMTRENTLIGE: de 13 hølene er fordelt langs Holselvas dalbunn (Holsfjorden vest → Strandafjorden øst, ~60.58 N, lon 8.35–8.43, 445–484 moh) funnet via DTM-skan — inatur-kartet er ikke georeferert. Juster eksakte posisjoner for hver høl (Sandermohølen … Kanalen) når du har riktige punkt.",
+    "Vanntemp: fra 12.614.0 Kvinda — en liten sideelv (~710 moh) som er eneste ferske temp-stasjon i området; brukt som proxy (tempOnly: viser ikke Kvindas vannføring). Bytt til en Holselva-stasjon hvis en pålitelig dukker opp.",
+    "Vannføring: modelleres. Holselva er sterkt regulert (Hol I/II/III kraftverk) og ingen fersk måler representerer hovedløpet (Strandefjord avløp 12.141.0 og Holsfjorden 12.555.0 rapporterer ikke). Vannstandsgraf derfor skjult (secondary=null).",
+    "Regler (inatur): sesong 1. juni–5. september, kun aktivt mark- og fluefiske, all fisk over 40 cm settes tilbake. Røde soner = mark+flue, blå soner = kun flue (se kart-PDF).",
+    "Flueprofil: «hemsil» (ørret — «Ørretens rike», regulert Hallingdal-dalelv)."
+  ]
+}

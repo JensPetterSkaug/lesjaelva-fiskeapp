@@ -107,6 +107,11 @@ function applyRiverChrome(){
   set(".main-h1", c.name);
   set(".fishon-h1", c.fishonTitle);
   if(c.secondary&&c.secondary.label) set("#secStationName", c.secondary.label);
+  const card=document.getElementById("cardLink");
+  if(card){
+    if(c.fishingCardUrl){ card.href=c.fishingCardUrl; card.removeAttribute("hidden"); }
+    else card.setAttribute("hidden","");
+  }
 }
 
 async function loadWeather(){
@@ -199,6 +204,7 @@ async function loadWater(){
     };
     const obs=await fetchStationObs(st.id, codes, ref);
     W.temp=obs.temp; W.discharge=obs.discharge; W.stage=obs.stage;
+    if(st.tempOnly){ W.discharge=null; W.stage=null; }   // bruk kun temp (f.eks. sideelv-proxy)
     STATE.water[st.id]=W;
   }
   // Fiskeindeksen henter hver parameter fra FØRSTE stasjon som har den
@@ -1259,7 +1265,7 @@ function renderLeeMap(){
     const esriLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {maxZoom:19, attribution:"Tiles © Esri"});
     topoLayer.addTo(LEEMAP);
-    L.control.layers({"Topo (Kartverket)":topoLayer, "Flyfoto (Esri)":esriLayer}, null, {position:"topright"}).addTo(LEEMAP);
+    L.control.layers({"Topo (Kartverket)":topoLayer, "Flyfoto (Esri)":esriLayer}, null, {position:"bottomright"}).addTo(LEEMAP);
     // NB: polylinje, le-punkter (LEELAYER) og vindpil legges til ETTER baselagene → ligger i
     // høyere paner (overlay/marker/control) og blir værende oppå uansett valgt bakgrunnslag.
     const lats=T.map(p=>p.lat), lons=T.map(p=>p.lon);

@@ -28,6 +28,10 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:18p
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
 h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .sub{color:var(--mut);font-size:13.5px;margin:7px 0 0}
+.card-link{display:inline-flex;align-items:center;gap:4px;margin-top:9px;font-size:13px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--teal-dim);border-radius:8px;padding:5px 11px}
+.card-link:hover{background:var(--teal-dim);color:var(--ink)}
+.card-link[hidden]{display:none}
+body.tab-fishon .head-left .card-link{display:none}
 .fishon-h1{display:none}
 body.tab-fishon .head-left .eyebrow,
 body.tab-fishon .head-left .main-h1,

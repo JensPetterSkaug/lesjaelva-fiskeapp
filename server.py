@@ -698,6 +698,7 @@ class Handler(BaseHTTPRequestHandler):
             "flowFixed": cfg.get("flowFixed"),
             "frostStation": cfg.get("frostStation"),
             "frostLabel": cfg.get("frostLabel"),
+            "fishingCardUrl": cfg.get("fishingCardUrl"),
             "multiTenant": SINGLE_RIVER is None,
             "contact": CONTACT,
         })
