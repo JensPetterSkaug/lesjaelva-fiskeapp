@@ -1253,8 +1253,15 @@ function renderLeeMap(){
   if(!T||!T.length){ if(cap) cap.textContent="Terrengdata for LE-kartet er ikke lagt inn for denne elva ennå."; if(leg) leg.innerHTML=""; return; }
   if(!LEEMAP){
     LEEMAP=L.map(host,{scrollWheelZoom:false});
-    L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
-      {maxZoom:17, attribution:"© Kartverket"}).addTo(LEEMAP);
+    // bakgrunnslag (baselayers). Topo = standard ved innlasting; Esri flyfoto valgbart.
+    const topoLayer=L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
+      {maxZoom:17, attribution:"© Kartverket"});
+    const esriLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {maxZoom:19, attribution:"Tiles © Esri"});
+    topoLayer.addTo(LEEMAP);
+    L.control.layers({"Topo (Kartverket)":topoLayer, "Flyfoto (Esri)":esriLayer}, null, {position:"topright"}).addTo(LEEMAP);
+    // NB: polylinje, le-punkter (LEELAYER) og vindpil legges til ETTER baselagene → ligger i
+    // høyere paner (overlay/marker/control) og blir værende oppå uansett valgt bakgrunnslag.
     const lats=T.map(p=>p.lat), lons=T.map(p=>p.lon);
     LEEMAP.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[25,25]});
     L.polyline(T.map(p=>[p.lat,p.lon]),{color:"#4fb6a8",weight:2,opacity:0.65}).addTo(LEEMAP);
