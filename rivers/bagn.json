@@ -1,0 +1,53 @@
+{
+  "id": "bagn",
+  "name": "Bagn — Begna",
+  "shortName": "Bagn",
+  "fishonTitle": "Fluevalg og bestefiskested i Bagn",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Valdres",
+  "lat": 60.808,
+  "lon": 9.5674,
+  "altitude": 220,
+  "station": "12.290.0",
+  "stations": [
+    {
+      "id": "12.290.0",
+      "label": "Bagn (vannføring + vannstand)"
+    },
+    {
+      "id": "12.608.0",
+      "label": "Hallingdalselva v/Nesbyen (vanntemp)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Bagn",
+      "lat": 60.808,
+      "lon": 9.5674,
+      "altitude": 220
+    },
+    {
+      "label": "Fønhus",
+      "lat": 60.7596,
+      "lon": 9.6646,
+      "altitude": 198
+    }
+  ],
+  "secondary": {
+    "label": "Bagn",
+    "nveStation": "12.290.0",
+    "normalsStation": "12.290.0",
+    "metLat": 60.808,
+    "metLon": 9.5674,
+    "metAlt": 220
+  },
+  "leeZones": [],
+  "terrainFile": "terrain/bagn.json",
+  "flyArchetype": "hemsil",
+  "_todo": [
+    "Vanntemp: hentes fra 12.608.0 Hallingdalselva v/Nesbyen — NB: en NABOELV (Hallingdal), ikke Begna, ~27 km unna, brukt som regionalt proxy fordi alle temp-stasjoner på Begna ved Bagn er døde/feilende (12.333.0 Begna v/Leite bru sluttet 10.06.2026 med urealistiske 22–23°). Bytt til en Begna-stasjon hvis en pålitelig dukker opp.",
+    "Vannføring + vannstand: målt fra 12.290.0 (Bagn), midt i fiskesonen — driver indeksbidraget og vannstandsgrafen med sesongnormal.",
+    "LE-kart: 9 auto-genererte terrengpunkt langs Begna (Bagn → Eid), snappet til dalbunn. Magasin-/dampunktet ved Aurdalsfjorden (307 moh) er utelatt (steil regulert fallstrekning, ikke fiskbart løp). Kan erstattes med ekte navngitte fiskeplasser når koordinater foreligger.",
+    "Flueprofil: gjenbruker «hemsil» (ørret-dominert, regulert dalelv). Vurder egen Begna-arketype hvis fangstrapporter tilsier det."
+  ]
+}

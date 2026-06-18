@@ -211,6 +211,7 @@ async function loadWater(){
   STATE.watertemp = tw ? tw.W.temp : (P?P.temp:null);
   STATE.discharge = dw ? dw.W.discharge : (P?P.discharge:null);
   STATE.dischargeStation = dw ? dw.id : STATE.primary;   // hvilken stasjon flow-normalen skal hentes fra
+  STATE.tempStation = tw ? tw.id : STATE.primary;        // hvilken stasjon temp-grafen skal hentes fra (kan ≠ primær)
 }
 /* fersk NVE-serie? (eldre enn 5 dager = stasjonen rapporterer ikke lenger) */
 function freshSeries(s){ return !!(s && s.time && (Date.now()-new Date(s.time).getTime())<5*864e5); }
@@ -538,15 +539,16 @@ function renderNowChips(){
   const sts=(STATE.cfg.stations&&STATE.cfg.stations.length)?STATE.cfg.stations:[{id:STATE.primary,label:STATE.primary}];
 
   // --- vanntemperatur, én rad per stasjon ---
+  // målt temp kan ligge på en annen stasjon enn primær (f.eks. Bagn: flow på Bagn, temp på nabostasjon)
+  const tempMeasured = !!(STATE.watertemp && freshSeries(STATE.watertemp));
   const tempRows=sts.map(st=>{
     const W=STATE.water[st.id];
     if(W&&freshSeries(W.temp)){ const a=trendArrow(W.temp.trend24,0.2);
       return {label:st.label, val:`${fmt1(W.temp.latest)}° ${a}`, cls:a==="↑"?"up":(a==="↓"?"down":"")}; }
-    if(st.id===STATE.primary && now.wtNow!=null) return {label:st.label, val:`${fmt1(now.wtNow)}°`, cls:""};
+    if(st.id===STATE.primary && !tempMeasured && now.wtNow!=null) return {label:st.label, val:`${fmt1(now.wtNow)}°`, cls:""};
     return {label:st.label, val:"–", cls:""};
   });
-  const hasPrimTemp=STATE.water[STATE.primary]&&freshSeries(STATE.water[STATE.primary].temp);
-  const tempFoot = hasPrimTemp ? "målt · NVE"
+  const tempFoot = tempMeasured ? "målt · NVE"
                  : (STATE.cfg.tempOverride!=null ? "manuelt satt" : (STATE.cfg.hasKey?"estimat (modell)":"estimat · legg inn nøkkel"));
 
   // --- vannføring, én rad per stasjon (med kategori) ---
@@ -1139,7 +1141,7 @@ function renderPressureChart(){
    ============================================================ */
 async function loadTempChart(){
   STATE.tempChart=null;
-  const prim=(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
+  const prim=STATE.tempStation||(STATE.cfg.stations&&STATE.cfg.stations[0]&&STATE.cfg.stations[0].id)||STATE.cfg.station;
   // HISTORIKK: målt vanntemp (NVE param 1003, døgnoppløsning) siste 30 d
   let hist=[];
   if(prim && STATE.cfg.hasKey){
