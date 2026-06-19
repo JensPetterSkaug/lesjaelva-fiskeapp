@@ -1,19 +1,21 @@
 :root{
-  --bg:#0d1a1e;
-  --panel:#12262c;
-  --panel2:#0f2126;
-  --line:rgba(79,182,168,0.16);
-  --teal:#4fb6a8;
-  --teal-dim:#2c6a63;
-  --amber:#e0935a;
-  --red:#d8624a;
-  --green:#6fc27a;
-  --gold:#c9b85a;
-  --ink:#eaf3f1;
-  --mut:#7e9a98;
-  --mut2:#52706e;
+  /* Fase 1 – designtokens fra handoff (grønnsvart tema). Variabelnavnene beholdes
+     (--teal osv.) så all eksisterende CSS får nye verdier uten omskriving. */
+  --bg:#070f0c;
+  --panel:#0f1b17;
+  --panel2:#0d1814;
+  --line:rgba(120,180,150,0.12);
+  --teal:#4FA77D;        /* hovedaksent / god status (var teal) */
+  --teal-dim:#2E7D5B;    /* grønn base – kanter/knapper */
+  --amber:#E0A82E;
+  --red:#D9594C;         /* svak/dårlig status (tint) */
+  --green:#9AD1B4;       /* lys grønn – sekundær */
+  --gold:#E0A82E;
+  --ink:#eef3f0;
+  --mut:#6f817a;
+  --mut2:#5e7068;
   --mono:ui-monospace,"SF Mono","Cascadia Mono","JetBrains Mono",Menlo,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  --sans:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
