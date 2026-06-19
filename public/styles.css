@@ -30,15 +30,87 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:18p
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);margin:0 0 8px}
 h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .sub{color:var(--mut);font-size:13.5px;margin:7px 0 0}
+.tab-sub{color:var(--mut);font-size:13px;font-weight:600;margin:6px 0 0}
+
+/* «I dag»: Beste tid (24-timers stripe) */
+.besttid{padding:16px 16px 14px}
+.bt-cap{font-size:13.5px;color:var(--ink);margin-bottom:12px}
+.bt-cap b{color:var(--gold)}
+.bt-strip{position:relative;display:flex;align-items:flex-end;gap:2px;height:88px}
+.bt-band{position:absolute;top:0;bottom:0;background:rgba(224,168,46,.10);
+  border:1px solid rgba(224,168,46,.22);border-radius:6px;pointer-events:none}
+.bt-bar{flex:1;border-radius:3px 3px 0 0;min-height:4px;opacity:.5;position:relative}
+.bt-bar.win{opacity:1}
+.bt-bar.bt-na{background:var(--line)!important;height:6%!important;opacity:.45}
+.bt-axis{display:flex;justify-content:space-between;font-family:var(--mono);
+  font-size:10px;color:var(--mut2);margin-top:6px;letter-spacing:.06em}
+
+/* «I dag»: Arter i spill – topp 5 */
+.arter{padding:16px}
+.ar-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.ar-head h3{font-size:16px;margin:0}
+.ar-all{background:none;border:none;color:var(--teal);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.ar-list{display:flex;flex-direction:column;gap:2px}
+.ar-row{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;cursor:pointer;
+  padding:8px 4px;text-align:left;font-family:var(--sans);border-radius:8px}
+.ar-row:hover{background:var(--panel2)}
+.ar-row.off{opacity:.5}
+.ar-navn{flex:0 0 auto;min-width:120px;font-style:italic;font-size:14px;color:var(--ink)}
+.ar-bar{flex:1;max-width:160px;height:5px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.ar-fill{display:block;height:100%;border-radius:4px}
+.ar-sc{flex:0 0 auto;font-family:var(--mono);font-size:19px;font-weight:700;min-width:30px;text-align:right}
+
+/* «Fisk her»: Topp 3 fluer akkurat nå (utvidbare kort) */
+.fishon-flies{padding:16px}
+.ff-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ff-head h3{margin:0;font-size:16px}
+.arter-badge{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--teal);
+  border:1px solid var(--teal-dim);background:rgba(79,167,125,.12);border-radius:6px;padding:3px 8px}
+.ff-intro{color:var(--mut);font-size:13px;line-height:1.5;margin:0 0 12px}
+.ff-sub{font-size:13px;color:var(--mut);margin:16px 0 8px;font-weight:600}
+.ff-list{display:flex;flex-direction:column;gap:8px}
+.ffc{border:1px solid var(--line);border-radius:14px;background:var(--panel2);overflow:hidden;transition:border-color .14s}
+.ffc.open{border-color:var(--teal-dim)}
+.ffc-head{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;cursor:pointer;
+  padding:11px 12px;text-align:left;font-family:var(--sans)}
+.ffc-rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-family:var(--mono)}
+.ffc-rank.dry{background:rgba(79,167,125,.18);color:var(--teal)}
+.ffc-rank.nymph{background:rgba(154,209,180,.18);color:var(--green)}
+.ffc .fly-img{flex:0 0 auto;width:46px;height:46px}
+.ffc-meta{flex:1;min-width:0}
+.ffc-name{display:block;font-size:14.5px;font-weight:650;color:var(--ink)}
+.ffc-name .fl-sz{color:var(--mut);font-weight:500;font-size:12.5px}
+.ffc-imit{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+.ffc-chev{flex:0 0 auto;font-size:20px;color:var(--mut);width:20px;text-align:center;line-height:1}
+.ffc-note{padding:0 14px 13px 14px;font-size:13px;line-height:1.55;color:var(--ink)}
+.ffc-type{color:var(--mut)}
+.ff-tactic{margin:16px 0 0;font-size:13px;line-height:1.55;color:var(--mut)}
+.ff-tactic b{color:var(--ink)}
+.ff-note{color:var(--teal)}
+
+/* Prognose: Sesongkalender (Gantt – klekkevinduer pr. art) */
+.kal-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em}
+.kal{font-size:13px}
+.kal-row{display:grid;grid-template-columns:108px 1fr;align-items:center;height:26px}
+.kal-head{height:34px;margin-bottom:4px}
+.kal-navn{font-style:italic;font-size:12.5px;color:var(--ink);padding-right:8px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kal-track{position:relative;height:100%}
+.kal-axis{border-bottom:1px solid var(--line)}
+.kal-mtick{position:absolute;top:18px;font-family:var(--mono);font-size:9.5px;
+  color:var(--mut2);letter-spacing:.04em}
+.kal-bar{position:absolute;top:50%;transform:translateY(-50%);height:9px;border-radius:3px;min-width:3px}
+.kal-todayline{position:absolute;top:0;bottom:0;width:1px;background:rgba(224,168,46,.45);transform:translateX(-50%)}
+.kal-today-pill{position:absolute;top:0;transform:translateX(-50%);font-family:var(--mono);font-size:9px;
+  color:var(--gold);background:rgba(224,168,46,.14);border:1px solid rgba(224,168,46,.4);
+  border-radius:5px;padding:1px 5px;white-space:nowrap;z-index:2}
+.kal-note{margin:14px 0 0;font-size:11.5px;line-height:1.5}
 .card-link{display:inline-flex;align-items:center;gap:4px;margin-top:9px;font-size:13px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--teal-dim);border-radius:8px;padding:5px 11px}
 .card-link:hover{background:var(--teal-dim);color:var(--ink)}
 .card-link[hidden]{display:none}
-body.tab-fishon .head-left .card-link{display:none}
+/* Persistent tittel på alle faner; kun undertittelen (.tab-sub) bytter per fane (jf. designoppsett). */
 .fishon-h1{display:none}
-body.tab-fishon .head-left .eyebrow,
-body.tab-fishon .head-left .main-h1,
-body.tab-fishon .head-left .sub{display:none}
-body.tab-fishon .head-left .fishon-h1{display:block}
 .head-right{display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:4px}
 .livedot{width:9px;height:9px;border-radius:50%;background:var(--mut2);box-shadow:0 0 0 0 rgba(79,182,168,0.5)}
 .livedot.ok{background:var(--teal);animation:pulse 2.4s infinite}
@@ -346,6 +418,14 @@ a.btn{display:inline-block;text-decoration:none;line-height:1}
     display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;padding:4px 2px;font-family:var(--sans)}
   .tabbar button i{font-size:19px}
   .tabbar button.active{color:var(--teal)}
+  /* hevet senter-knapp (Fisk her) */
+  .tabbar button.center{color:var(--mut)}
+  .tabbar button.center i{width:54px;height:54px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:21px;
+    margin-top:-26px;color:#fff;background:linear-gradient(155deg,#3E9B72,#256046);
+    box-shadow:0 6px 18px rgba(46,125,91,.5),0 0 0 5px var(--bg)}
+  .tabbar button.center.active{color:var(--teal)}
+  .tabbar button.center.active i{background:linear-gradient(155deg,#4FA77D,#2E7D5B)}
   .wrap{padding-bottom:76px}
 }
 

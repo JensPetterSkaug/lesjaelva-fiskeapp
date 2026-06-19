@@ -562,6 +562,67 @@ function renderHero(){
   renderBreakdown(idx, label);
   renderHatch(sel);
   renderKlekke(sel);
+  renderBesttid(sel);
+  renderArter(sel);
+}
+
+/* ============================================================
+   «I dag»-widgets: Beste tid (timestrip) + Arter i spill (topp 5)
+   ============================================================ */
+/* gå til Prognose-fanen og scroll til full artsliste */
+function goPrognose(){ const k=$("klekkeSec"); applyTabs("prognose"); if(k) k.scrollIntoView({behavior:"smooth"}); }
+
+/* 24-timers «Beste tid»-stripe for valgt dag (gjenbruker buildDayReport time-for-time-score) */
+function renderBesttid(sel){
+  const host=$("besttidSec"); if(!host) return;
+  const dayIndex=(sel==null?0:sel);
+  const rep=buildDayReport(dayIndex);
+  if(!rep || !rep.rows || !rep.rows.length){
+    host.innerHTML=`<div class="bt-cap muted">★ Beste tid — krever MET-timesprognose (de nærmeste ~2–3 døgnene). Velg en nærmere dag.</div>`;
+    return;
+  }
+  const rows=rep.rows;
+  const byHour={}; rows.forEach(r=>{ byHour[r.h.hour]=r.best.r.score; });
+  const peak=Math.max(...rows.map(r=>r.best.r.score));
+  const hs=rows.filter(r=>r.best.r.score>=peak-5).map(r=>r.h.hour);
+  const a=Math.min(...hs), b=Math.max(...hs)+1;
+  const bandL=a/24*100, bandW=(b-a)/24*100;
+  let bars="";
+  for(let h=0;h<24;h++){
+    const sc=byHour[h];
+    if(sc==null){ bars+=`<div class="bt-bar bt-na" title="kl ${String(h).padStart(2,"0")}: ingen timesdata"></div>`; continue; }
+    const [,vc]=verdict(sc, null);
+    const inWin = h>=a && h<b;
+    bars+=`<div class="bt-bar${inWin?" win":""}" style="height:${Math.max(6,sc)}%;background:${vc}" title="kl ${String(h).padStart(2,"0")}: ${sc}/100"></div>`;
+  }
+  host.innerHTML=`
+    <div class="bt-cap">★ Beste tid <b>kl ${String(a).padStart(2,"0")}–${String(b).padStart(2,"0")}</b> <span class="muted">· topp ${peak}/100</span></div>
+    <div class="bt-strip">
+      <div class="bt-band" style="left:${bandL}%;width:${bandW}%"></div>
+      ${bars}
+    </div>
+    <div class="bt-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>`;
+}
+
+/* «Arter i spill i dag» — topp 5 arter etter delindeks (fra klekkemodellen) */
+function renderArter(sel){
+  const host=$("arterSec"); if(!host) return;
+  const peak = (sel==null) ? (STATE.now&&STATE.now.klekke) : (STATE.days[sel]&&STATE.days[sel].klekke);
+  if(typeof beregn==="undefined" || !peak || !peak.r || !peak.r.arter){ host.innerHTML=""; return; }
+  const scoreCol=s => s>=70?"#7BBE6A" : s>=50?"#6FA39A" : s>=30?"#8AA29A" : "var(--mut)";
+  const top=[...peak.r.arter].sort((x,y)=>y.klekkescore-x.klekkescore).slice(0,5);
+  const list=top.map(a=>{
+    const sc=Math.round(a.klekkescore), col=scoreCol(sc), inS=a.gate>0.05;
+    return `<button type="button" class="ar-row${inS?"":" off"}">
+      <span class="ar-navn">${a.art.navn}</span>
+      <span class="ar-bar"><span class="ar-fill" style="width:${Math.min(100,sc)}%;background:${col}"></span></span>
+      <span class="ar-sc" style="color:${col}">${sc}</span>
+    </button>`;
+  }).join("");
+  host.innerHTML=`
+    <div class="ar-head"><h3>Arter i spill i dag</h3><button type="button" class="ar-all">Alle 8 →</button></div>
+    <div class="ar-list">${list}</div>`;
+  host.querySelectorAll(".ar-row, .ar-all").forEach(el=>el.onclick=goPrognose);
 }
 
 /* ============================================================
@@ -626,6 +687,43 @@ function renderKlekke(sel){
     </div>
     <div class="kl-arter">${arter}</div>
     <p class="kl-note muted">Artsspesifikk klekkemodell (døgngrader + vanntemp + diel-vindu). <b>KAL</b> = krever lokal kalibrering; tersklene er forskningsforankrede startverdier. Egen modell, uavhengig av hovedindeksen øverst.</p>`;
+}
+
+/* ============================================================
+   SESONGKALENDER – klekkevinduer pr. art (Gantt), domene MAR→OKT
+   ============================================================ */
+const KAL_COL={
+  baetis_rhodani:["#7BBE6A","#3E6B4E"],   // vår, høst
+  sma_baetis:["#6FB85F"], serratella_ignita:["#7A6B4A"],
+  ephemerella_aurivillii:["#3F7E76"], ephemera_danica:["#D8B27A"],
+  siphlonurus:["#7BBE6A"], heptageniidae:["#6FA39A"], varfluer:["#8C82C4"]
+};
+const KAL_MONTHS=[["MAR",60],["APR",91],["MAI",121],["JUN",152],["JUL",182],["AUG",213],["SEP",244],["OKT",274]];
+function renderKalender(){
+  const host=$("kalenderBox"); if(!host) return;
+  if(typeof ARTER==="undefined"){ host.innerHTML='<div class="empty">Artsdata ikke lastet.</div>'; return; }
+  const D0=60, SPAN=245;                                   // 1. mars → 1. nov (dag-i-året)
+  const pos=doy=>(Math.max(D0,Math.min(D0+SPAN,doy))-D0)/SPAN*100;
+  const todayPos=pos(dagIAaret(new Date()));
+  const ticks=KAL_MONTHS.map(([m,d])=>`<span class="kal-mtick" style="left:${pos(d)}%">${m}</span>`).join("");
+  const rows=ARTER.map(a=>{
+    const cols=KAL_COL[a.id]||["#6FA39A"];
+    const bars=(a.gates||[]).map((g,gi)=>{
+      const l=pos(g[0]), w=pos(g[1])-pos(g[0]);
+      return `<span class="kal-bar" style="left:${l}%;width:${w}%;background:${cols[gi]||cols[0]}" title="${a.navn}"></span>`;
+    }).join("");
+    return `<div class="kal-row">
+      <span class="kal-navn" title="${a.navn}">${a.navn}</span>
+      <span class="kal-track">${bars}<span class="kal-todayline" style="left:${todayPos}%"></span></span>
+    </div>`;
+  }).join("");
+  host.innerHTML=`
+    <div class="kal-row kal-head">
+      <span class="kal-navn"></span>
+      <span class="kal-track kal-axis">${ticks}<span class="kal-today-pill" style="left:${todayPos}%">I DAG</span></span>
+    </div>
+    ${rows}
+    <p class="kal-note muted">Klekkevinduene er forskningsforankrede startverdier (sesong-porter i klekkemodellen) — finjusteres lokalt. <b>I DAG</b>-streken viser hvor i sesongen vi er nå.</p>`;
 }
 
 function chip(ct,cv,cu,cs,csClass,key,ts){
@@ -796,54 +894,56 @@ function condCell(icon,label,val,hint,hintCls){
     `<div class="cond-lb">${label}</div><div class="cond-vl">${val}</div>`+
     `${hint?`<div class="cond-ht ${hintCls||""}">${hint}</div>`:""}</div></div>`;
 }
+/* ett utvidbart fluekort (bilde + navn + Imiterer art; trykk for fiskeråd) */
+function flyCardExpandable(f, rank, kind){
+  const img=flyImage(f.name);
+  const lat=(f.lat&&f.lat!=="—")?` · <i>${f.lat}</i>`:"";
+  return `<div class="ffc">
+    <button type="button" class="ffc-head">
+      <span class="ffc-rank ${kind}">${rank}</span>
+      <span class="fly-img${img?"":" noimg"}"><span class="fly-ph">🪰</span>${img?`<img src="${img}" alt="${f.name}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove();">`:""}</span>
+      <span class="ffc-meta">
+        <span class="ffc-name">${f.name} <span class="fl-sz">${f.size}</span></span>
+        <span class="ffc-imit">Imiterer ${f.im}${lat}</span>
+      </span>
+      <span class="ffc-chev" aria-hidden="true">+</span>
+    </button>
+    <div class="ffc-note" hidden>${f.tip} <span class="ffc-type">· ${f.type}</span></div>
+  </div>`;
+}
 function renderFishon(){
   const host=$("fishonSec"); if(!host) return;
   const N=STATE.now;
   if(!N){ host.innerHTML=`<section class="panel"><div class="empty">Venter på sanntidsdata …</div></section>`; return; }
-  const adv=N.hatch, w=N.now, cat=adv.state.cat;
-  const dominant=adv.primary||"";
+  const adv=N.hatch;
+  const dry=adv.flies.filter(f=>f.type==="Tørrflue"||f.type==="Emerger").slice(0,3);
+  const nymph=adv.flies.filter(f=>f.type==="Nymfe").slice(0,1);
+  const dryCards=dry.map((f,i)=>flyCardExpandable(f,i+1,"dry")).join("");
+  const nymphCards=nymph.map((f,i)=>flyCardExpandable(f,i+1,"nymph")).join("");
 
-  // topp 3 tørrfluer + beste nymfe (rangert som i flueråd-lista)
-  const dryCards=adv.flies.filter(f=>f.type==="Tørrflue").slice(0,3).map(flyCardHTML).join("");
-  const nymphCards=adv.flies.filter(f=>f.type==="Nymfe").slice(0,1).map(flyCardHTML).join("");
-
-  // forhold nå
-  const wt=N.wtNow, wtA=STATE.watertemp?trendArrow(STATE.watertemp.trend24,0.2):"";
-  const wtHint = wt==null?"":(wt>=8&&wt<=15?"insektvennlig":(wt>15?"varmt – fisk morgen/kveld":(wt<5?"kaldt – treg fisk":"kjølig")));
-  const flowA=STATE.discharge?trendArrow(STATE.discharge.trend24,0.3):"";
-  const pCat=pressCat(w.press,w.dPress), pArrow=trendArrow(w.dPress,0.8);
-  const pHint = w.dPress<-0.8?"fallende = ofte best":(pCat==="bluebird"?"klart etter front":"");
-  const windHint = w.wind>=6?"kraftig – søk le":(w.wind>=3?"litt vind":"rolig");
-  const bw=bestWindowToday(), le=bestLeeNow();
-  const cond=[
-    condCell("💧","Vanntemp",`${fmt1(wt)}° <span class=\"ar\">${wtA}</span>`,wtHint,wt>15?"warn":""),
-    condCell("🌊","Vannføring",`${FLOW_LABEL[N.fcat]||"–"} <span class=\"ar\">${flowA}</span>`,CLAR_LABEL[N.clarity]||""),
-    condCell("🔵","Lufttrykk",`${PRESS_LABEL[pCat]} <span class=\"ar\">${pArrow}</span>`,pHint,pHint.includes("best")?"good":""),
-    condCell("💨","Vind",`${fmt1(w.wind)} m/s${w.windDir!=null?" "+degToCompass(w.windDir):""}`,windHint,w.wind>=6?"warn":""),
-    condCell("⏱️","Beste vindu i dag",bw?bw.txt:"–","topp time-for-time","good"),
-    condCell("🛡️","Beste le nå",le?le.txt:"–","se kart nederst"),
-  ].join("");
-
-  const flies=adv.flies.slice(0,8).map(f=>`<li><b>${f.name}</b> <span class="fl-sz">${f.size}</span> — ${f.im} · ${f.tip}</li>`).join("");
   host.innerHTML=`
-    <section class="panel fishon-hatch">
-      <div class="fh-head"><h3>Hva klekker nå <span class="muted">· ved elva</span></h3>
-        <span class="htag ${cat}">${HATCH_LABEL[cat]}</span></div>
-      <p class="fh-dom">${dominant}</p>
-      <h4 class="fh-sub">Topp tre tørrfluer nå</h4>
-      <div class="fly-top3">${dryCards}</div>
-      ${nymphCards?`<h4 class="fh-sub">Topp nymfevalg</h4><div class="fly-top3 fly-one">${nymphCards}</div>`:""}
-    </section>
-    <section class="panel fishon-cond">
-      <h3>Forhold nå</h3>
-      <div class="cond-grid">${cond}</div>
-    </section>
-    <section class="panel fishon-advice hatchbox">
-      <h3>Klekking &amp; flueråd</h3>
-      <h4>Anbefalte fluer for ${(STATE.cfg&&STATE.cfg.shortName)||"elva"} nå</h4><ul>${flies}</ul>
-      <h4>Taktikk</h4><p>${adv.tactic}</p>
-      ${adv.note?`<p style="color:var(--teal)">${adv.note}</p>`:""}
+    <section class="panel fishon-flies">
+      <div class="ff-head"><h3>Topp 3 fluer akkurat nå</h3><span class="arter-badge">ARTER I SPILL</span></div>
+      <p class="ff-intro">Hver flue matcher de tre artene med høyest delindeks akkurat nå. Trykk en flue for fiskeråd.</p>
+      <div class="ff-list">${dryCards}</div>
+      ${nymphCards?`<h4 class="ff-sub">Topp nymfe</h4><div class="ff-list">${nymphCards}</div>`:""}
+      <p class="ff-tactic"><b>Taktikk nå:</b> ${adv.tactic}${adv.note?` <span class="ff-note">${adv.note}</span>`:""}</p>
     </section>`;
+
+  // utvid/kollaps – kun ett kort åpent om gangen
+  host.querySelectorAll(".ffc-head").forEach(btn=>btn.onclick=()=>{
+    const card=btn.closest(".ffc"), wasOpen=card.classList.contains("open");
+    host.querySelectorAll(".ffc.open").forEach(c=>{
+      c.classList.remove("open");
+      const ch=c.querySelector(".ffc-chev"); if(ch) ch.textContent="+";
+      const nt=c.querySelector(".ffc-note"); if(nt) nt.hidden=true;
+    });
+    if(!wasOpen){
+      card.classList.add("open");
+      btn.querySelector(".ffc-chev").textContent="−";
+      card.querySelector(".ffc-note").hidden=false;
+    }
+  });
 }
 
 function dayLabel(d){ return `${DOW[d.getDay()]} ${d.getDate()}. ${MON[d.getMonth()]}`; }
@@ -915,13 +1015,13 @@ async function refresh(){
     await loadFlowNormals();   // trenger STATE.dischargeStation fra loadWater
     buildDays();
     STATE.selected=null;
-    renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderTomorrow(); renderFishon();
+    renderMeta(); renderHero(); renderForecast(); renderDailyReport(); renderKalender(); renderTomorrow(); renderFishon();
     logForecast();
     loadTempChart().then(renderTempChart).catch(()=>{});
     loadDombasChart().then(renderDombasChart).catch(()=>{});
     loadPressureChart().then(renderPressureChart).catch(()=>{});
-    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderTomorrow(); renderFishon(); }).catch(()=>{});
-    applyTabs(STATE.tab||"prognose");
+    loadLeeTerrain().then(()=>{ renderLeeMap(); renderLeeList(); renderDailyReport(); renderBesttid(STATE.selected); renderTomorrow(); renderFishon(); }).catch(()=>{});
+    applyTabs(STATE.tab||"idag");
     const okWater = STATE.cfg.hasKey && (STATE.discharge||STATE.watertemp);
     if(!STATE.cfg.hasKey) setLive("warn","vær OK · NVE-nøkkel mangler");
     else if(!okWater) setLive("warn","vær OK · ingen vann-serie funnet");
@@ -1717,25 +1817,36 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec","klekkeSec"];
+const HOME_BLOCKS=["heroSec","gate","besttidSec","arterSec","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec","kalenderSec","klekkeSec"];
+/* 3-faners struktur (mobil): I dag · Fisk her · Prognose */
 const TAB_BLOCKS={
-  dagsrapport:["forecast"],          // dagsrapporten er nå slått sammen med 14-dagers prognose
-  fishon:["fishonSec","mapsec"],
-  fiskerapport:["logsec"],
-  imorgen:["tomorrowSec"]
+  idag:    ["heroSec","gate","besttidSec","arterSec","hatchSec"],
+  fishon:  ["mapsec","fishonSec","logsec"],
+  prognose:["forecast","tempSec","dombasSec","pressSec","breakdownSec","kalenderSec","klekkeSec"]
 };
-// blokker som aldri vises på desktop / hjemmefanen (kun egne mobil-faner)
-const TAB_ONLY=["tomorrowSec","fishonSec"];
+const TAB_SUB={ idag:"Fisk nå · live forhold", fishon:"Hvor å fiske nå · le-kart", prognose:"14-dagers prognose" };
+// blokker som aldri vises på desktop full-scroll (kun mobil-faner / I dag-kondensat)
+const TAB_ONLY=["tomorrowSec","fishonSec","besttidSec","arterSec"];
 function applyTabs(active){
   STATE.tab=active;
+  const sub=$("tabSub"); if(sub) sub.textContent=TAB_SUB[active]||"";
   const all=HOME_BLOCKS.concat(TAB_ONLY);
   const mobile=window.matchMedia("(max-width:700px)").matches;
   const noSec = !(STATE.cfg && STATE.cfg.secondary);    // ingen sekundærstasjon -> skjul vannstandsgraf
+  document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===active));
   document.body.classList.toggle("tab-fishon", mobile && active==="fishon");
   if(!mobile){ all.forEach(id=>{const e=$(id); if(e) e.classList.toggle("tab-hidden", TAB_ONLY.includes(id) || (id==="dombasSec"&&noSec)); }); return; }
-  const show = active==="prognose" ? HOME_BLOCKS : (TAB_BLOCKS[active]||HOME_BLOCKS);
+  const show = TAB_BLOCKS[active] || TAB_BLOCKS.idag;
   all.forEach(id=>{ const e=$(id); if(e) e.classList.toggle("tab-hidden", !show.includes(id) || (id==="dombasSec"&&noSec)); });
-  document.querySelectorAll(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===active));
+  // Le-kartet kan ha blitt initialisert mens fanen var skjult (0 px) → kjør size/fit på nytt når den vises
+  if(active==="fishon" && typeof LEEMAP!=="undefined" && LEEMAP){
+    setTimeout(()=>{
+      LEEMAP.invalidateSize();
+      const T=STATE.terrain;
+      if(T&&T.length){ const lats=T.map(p=>p.lat), lons=T.map(p=>p.lon);
+        LEEMAP.fitBounds([[Math.min(...lats),Math.min(...lons)],[Math.max(...lats),Math.max(...lons)]],{padding:[25,25]}); }
+    },90);
+  }
 }
 function renderTomorrow(){
   const host=$("tomorrowSec"); if(!host) return;
@@ -1763,10 +1874,10 @@ function renderTomorrow(){
   </div>`;
 }
 document.querySelectorAll(".tabbar button").forEach(b=>{
-  b.onclick=()=>{ const t=b.dataset.tab; if(t==="imorgen") renderTomorrow(); if(t==="fishon") renderFishon(); applyTabs(t); window.scrollTo(0,0); };
+  b.onclick=()=>{ const t=b.dataset.tab; if(t==="idag") selectDay(null); if(t==="fishon") renderFishon(); applyTabs(t); window.scrollTo(0,0); };
 });
-window.addEventListener("resize",()=>applyTabs(STATE.tab||"prognose"));
-applyTabs("prognose");
+window.addEventListener("resize",()=>applyTabs(STATE.tab||"idag"));
+applyTabs("idag");
 
 $("refreshBtn").onclick=refresh;
 if($("reportInfoBtn")) $("reportInfoBtn").onclick=()=>{

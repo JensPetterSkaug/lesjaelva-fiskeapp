@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css?v=20260619c">
+<link rel="stylesheet" href="/styles.css?v=20260619l">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -19,6 +19,7 @@
     <div class="head-left">
       <p class="eyebrow">Elvefiske · live prognose · NVE Sildre + MET</p>
       <h1 class="main-h1">Lesjaelva — øvre Gudbrandsdalslågen, sone 7</h1>
+      <p class="tab-sub" id="tabSub">Fisk nå · live forhold</p>
       <a class="card-link" id="cardLink" target="_blank" rel="noopener" hidden>🎣 Kjøp fiskekort på inatur.no →</a>
       <h1 class="fishon-h1">Fluevalg og bestefiskested i Lesjaelva</h1>
     </div>
@@ -53,8 +54,11 @@
 
   <div class="gate" id="gate"></div>
 
-  <!-- FISHON – ved elva (kun mobil-fane) -->
-  <div id="fishonSec"></div>
+  <!-- BESTE TID – I DAG (24-timers stripe; «I dag»-fanen) -->
+  <section class="panel besttid" id="besttidSec"></section>
+
+  <!-- ARTER I SPILL – topp 5 («I dag»-fanen) -->
+  <section class="panel arter" id="arterSec"></section>
 
   <!-- 14-DAGERS PROGNOSE + DAGSRAPPORT (slått sammen: klikk en dag → oppdaterer time-for-time under) -->
   <section class="panel forecast" id="forecast">
@@ -90,6 +94,9 @@
     <div class="chartcap" id="leeCap"></div>
     <div class="leelist" id="leeList"></div>
   </section>
+
+  <!-- FISHON – Topp 3 fluer akkurat nå (kun «Fisk her»-fane; rett under le-kartet) -->
+  <div id="fishonSec"></div>
 
   <!-- VANNTEMPERATUR: HISTORIKK + PROGNOSE -->
   <section class="panel chartsec" id="tempSec">
@@ -180,6 +187,15 @@
     <div id="bars"></div>
   </section>
 
+  <!-- SESONGKALENDER (klekkevinduer pr. art – Gantt) -->
+  <section class="panel kalender" id="kalenderSec">
+    <div class="fc-head">
+      <h3>Sesongkalender</h3>
+      <span class="muted kal-meta">KLEKKEVINDUER · MAR → OKT</span>
+    </div>
+    <div id="kalenderBox" class="kal">–</div>
+  </section>
+
   <!-- KLEKKEBAROMETER (artsspesifikk klekkemodell, nederst) -->
   <section class="panel klekke" id="klekkeSec">
     <h3>Klekkebarometer <span class="muted">· arter i spill</span></h3>
@@ -242,15 +258,13 @@
 
 <!-- BUNN-MENY (kun mobil) -->
 <nav class="tabbar" id="tabbar" aria-label="Hovedmeny">
+  <button data-tab="idag" aria-label="I dag"><i class="fa-regular fa-clock" aria-hidden="true"></i><span>I dag</span></button>
+  <button data-tab="fishon" class="center" aria-label="Fisk her"><i class="fa-solid fa-fish" aria-hidden="true"></i><span>Fisk her</span></button>
   <button data-tab="prognose" aria-label="Prognose"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Prognose</span></button>
-  <button data-tab="dagsrapport" aria-label="Dagsrapport"><i class="fa-solid fa-sun" aria-hidden="true"></i><span>Dagsrapport</span></button>
-  <button data-tab="fishon" class="center" aria-label="Fishon"><i class="fa-solid fa-fish" aria-hidden="true"></i><span>Fishon</span></button>
-  <button data-tab="fiskerapport" aria-label="Fiskerapport"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i><span>Fiskerapport</span></button>
-  <button data-tab="imorgen" aria-label="I morgen"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>I morgen</span></button>
 </nav>
 
 <script src="/scoring.js?v=20260619c"></script>
 <script src="/klekkemodell.js?v=20260619b"></script>
-<script src="/app.js?v=20260619c"></script>
+<script src="/app.js?v=20260619k"></script>
 </body>
 </html>
