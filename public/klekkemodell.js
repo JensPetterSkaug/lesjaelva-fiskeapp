@@ -11,18 +11,23 @@
  *  2) `Math.exp(-(...)**2)` → `Math.exp(-((...)**2))` i bell()/gauss():
  *     unær minus rett før `**` er en SyntaxError i JS; parentesene
  *     disambiguerer uten å endre uttrykket (exp(−(d/σ)²)).
- * Matematikk, vekter, arter og terskler er URØRT.
+ * Matematikk, vekter, ddCenter/ddWidth/topt og diel er URØRT.
+ *
+ * KALIBRERING (2026-06): artenes `gates` (sesongvinduer, dag-i-året) er
+ * strammet til å treffe spesifikasjonens tabell «Sesongvindu (Sør-Norge)»
+ * (Leveranse 4) eksakt — f.eks. Baetis «slutten apr–jun» = [115,181].
+ * Dette styrer både Sesongkalenderen og sesong-porten i klekkescore.
  * ------------------------------------------------------------
  */
 
 /* ---------- Artsparametere (Leveranse 4) ---------- */
 const ARTER = [
   { id:"baetis_rhodani", navn:"Baetis rhodani", vanlig:"Large Dark Olive · str. 16",
-    gates:[[105,182],[244,304]], ddCenter:230, ddWidth:170, toptLo:8, toptHi:14,
+    gates:[[115,181],[244,304]], ddCenter:230, ddWidth:170, toptLo:8, toptHi:14,
     diel:"dag_skumring", ddKonf:"middels",
     note:"Univoltin i kaldt/høyt; bivoltin sør. Full larveutvikling ~950 DD (Sand & Brittain 2009). Basetemp antatt 0 °C; klekking ned til 3 °C (Elliott 1972)." },
   { id:"sma_baetis", navn:"Små Baetis spp.", vanlig:"B. muticus/fuscatus, Centroptilum m.fl.",
-    gates:[[152,288]], ddCenter:620, ddWidth:260, toptLo:10, toptHi:16,
+    gates:[[152,304]], ddCenter:620, ddWidth:260, toptLo:10, toptHi:16,
     diel:"dag", ddKonf:"lav", note:"Jevnt tilfang, ofte bivoltin. KAL." },
   { id:"serratella_ignita", navn:"Serratella ignita", vanlig:"Blue-Winged Olive (BWO)",
     gates:[[182,243]], ddCenter:860, ddWidth:240, toptLo:13, toptHi:18,
@@ -31,17 +36,17 @@ const ARTER = [
     gates:[[166,212]], ddCenter:720, ddWidth:210, toptLo:11, toptHi:16,
     diel:"dag_kveld", ddKonf:"lav", note:"Midt/sent juni–juli. Univoltin. KAL." },
   { id:"ephemera_danica", navn:"Ephemera danica", vanlig:"Norges største døgnflue",
-    gates:[[135,196]], ddCenter:760, ddWidth:230, toptLo:12, toptHi:18,
+    gates:[[121,196]], ddCenter:760, ddWidth:230, toptLo:12, toptHi:18,
     diel:"tidlig_ettermiddag", ddKonf:"lav",
     note:"GDD-styrt, semivoltin/2-årig (Everall 2015). Rett art for klare elver — IKKE E. vulgata. KAL." },
   { id:"siphlonurus", navn:"Siphlonurus spp.", vanlig:"Stor svømmedøgnflue",
-    gates:[[135,196]], ddCenter:560, ddWidth:220, toptLo:10, toptHi:15,
+    gates:[[121,212]], ddCenter:560, ddWidth:220, toptLo:10, toptHi:15,
     diel:"dag", ddKonf:"lav", note:"Forsommer. Skydekke dokumentert relevant (Sættem & Brittain 1985). KAL." },
   { id:"heptageniidae", navn:"Heptageniidae", vanlig:"Flathodede — stryk",
-    gates:[[135,288]], ddCenter:600, ddWidth:300, toptLo:11, toptHi:17,
+    gates:[[121,288]], ddCenter:600, ddWidth:300, toptLo:11, toptHi:17,
     diel:"dag_kveld", ddKonf:"lav", note:"Heptagenia/Rhithrogena/Ecdyonurus. Mest univoltin. KAL." },
   { id:"varfluer", navn:"Vårfluer (Trichoptera)", vanlig:"Limnephilidae / Hydropsychidae",
-    gates:[[135,273]], ddCenter:650, ddWidth:320, toptLo:10, toptHi:18,
+    gates:[[121,273]], ddCenter:650, ddWidth:320, toptLo:10, toptHi:18,
     diel:"skumring_natt", ddKonf:"lav", note:"Dominerer i Rena. Pupping trigget av vår-temp/oksygen (Tszydel & Błońska 2022). KAL." }
 ];
 

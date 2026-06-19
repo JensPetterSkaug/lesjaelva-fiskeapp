@@ -1817,16 +1817,18 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","besttidSec","arterSec","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec","kalenderSec","klekkeSec"];
+const HOME_BLOCKS=["heroSec","gate","besttidSec","arterSec","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","breakdownSec","kalenderSec","klekkeSec"];
 /* 3-faners struktur (mobil): I dag · Fisk her · Prognose */
 const TAB_BLOCKS={
-  idag:    ["heroSec","gate","besttidSec","arterSec","hatchSec"],
+  idag:    ["heroSec","gate","besttidSec","arterSec"],
   fishon:  ["mapsec","fishonSec","logsec"],
   prognose:["forecast","tempSec","dombasSec","pressSec","breakdownSec","kalenderSec","klekkeSec"]
 };
 const TAB_SUB={ idag:"Fisk nå · live forhold", fishon:"Hvor å fiske nå · le-kart", prognose:"14-dagers prognose" };
-// blokker som aldri vises på desktop full-scroll (kun mobil-faner / I dag-kondensat)
-const TAB_ONLY=["tomorrowSec","fishonSec","besttidSec","arterSec"];
+// blokker som aldri vises på desktop full-scroll (kun mobil-faner / I dag-kondensat).
+// hatchSec ("Klekking & flueråd") er tatt ut av alle faner – erstattet av "Arter i spill"
+// (I dag) + flueråd på "Fisk her"; ligger her kun for å sikre at applyTabs skjuler den.
+const TAB_ONLY=["tomorrowSec","fishonSec","besttidSec","arterSec","hatchSec"];
 function applyTabs(active){
   STATE.tab=active;
   const sub=$("tabSub"); if(sub) sub.textContent=TAB_SUB[active]||"";
