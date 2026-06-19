@@ -294,6 +294,27 @@ function parseWeather(){
   return {now, days};
 }
 
+/* klimatologisk vanntemp-baseline (per elv, f.eks. Rena). Lastes hvis cfg.tempBaseline er satt. */
+async function loadTempBaseline(){
+  STATE.tempBaseline=null;
+  if(!STATE.cfg.tempBaseline) return;
+  try{ const b=await getJSON("/"+STATE.cfg.tempBaseline); if(b&&b.water) STATE.tempBaseline=b; }catch(e){}
+}
+/* vanntemp fra baseline: median[doy] + k·(luftavvik/5)·sensitivitet, klippet til [min,maks].
+   airAvg = glidende snitt lufttemp siste ~4 d. Vinterlåsen følger av [min,maks]-klippet (≈0 °C des–mars). */
+function baselineWaterTemp(date, airAvg){
+  const B=STATE.tempBaseline; if(!B||!B.water) return null;
+  const w=B.water[String(dayOfYear(date))]; if(!w) return null;
+  const [med,lo,hi]=w;
+  let t=med;
+  const an=B.airNormal?B.airNormal[String(dayOfYear(date))]:null;
+  if(an!=null && airAvg!=null){
+    const sens=(hi-lo)/2;                 // dagens følsomhet for vær (≈0 vinter, ~1,9 juli)
+    t = med + 1.0*((airAvg-an)/5)*sens;   // k=1.0 (kalibreres lokalt senere)
+  }
+  return Math.round(Math.max(lo, Math.min(hi, t))*100)/100;
+}
+
 /* ---------- modellér 14 dager (vanntemp + vannføring framover) ---------- */
 function buildDays(){
   const {now, days:metDays}=parseWeather();
@@ -315,6 +336,8 @@ function buildDays(){
   const out=[];
   const today=new Date(); today.setHours(12,0,0,0);
   let prev=null;
+  const airSeries=[];                              // for glidende 4-dagers luftsnitt (baseline-prognose)
+  const useBaseline = !!(STATE.tempBaseline && !wtMeasured && STATE.cfg.tempOverride==null);
   for(let i=0;i<14;i++){
     const date=new Date(today.getTime()+i*864e5);
     const key=osloDateKey(date);
@@ -326,13 +349,21 @@ function buildDays(){
       md={key, date, airMean:air, airMax:air+4, airMin:air-4, cloud:60, wind:3, windDir:null, press:1010, precip:1.2, sym:"partlycloudy_day", clim:true};
     }
     // --- modellér vanntemp ---
-    // mål: lufttemp minus ~1, med smeltevannsgulv ved høy vannføring
-    const wtTarget=air=>{ let t=air-1.0; const fl=flowLevel>0.6?6:(flowLevel>0.42?4.5:-99); return Math.max(0,Math.min(19,Math.max(t,fl))); };
-    if(i===0 && wt==null){      // ingen måling -> anker på NÅVÆRENDE lufttemp (dagsmiddelet kan være skjevt av nattetimer)
-      wt=wtTarget((now&&now.air!=null)?now.air:md.airMean);
-    }
-    if(i>0){
-      wt = prev.wt + 0.3*(wtTarget(md.airMean)-prev.wt);
+    airSeries.push((i===0 && now && now.air!=null) ? now.air : md.airMean);
+    const air4 = airSeries.slice(-4).reduce((s,v)=>s+v,0)/Math.min(4, airSeries.length);
+    if(useBaseline){
+      // klimatologisk baseline (f.eks. Rena) justert med luftavvik mot luft-normal
+      const bt=baselineWaterTemp(date, air4);
+      if(bt!=null) wt=bt;
+    } else {
+      // mål: lufttemp minus ~1, med smeltevannsgulv ved høy vannføring
+      const wtTarget=air=>{ let t=air-1.0; const fl=flowLevel>0.6?6:(flowLevel>0.42?4.5:-99); return Math.max(0,Math.min(19,Math.max(t,fl))); };
+      if(i===0 && wt==null){    // ingen måling -> anker på NÅVÆRENDE lufttemp (dagsmiddelet kan være skjevt av nattetimer)
+        wt=wtTarget((now&&now.air!=null)?now.air:md.airMean);
+      }
+      if(i>0){
+        wt = prev.wt + 0.3*(wtTarget(md.airMean)-prev.wt);
+      }
     }
     const warm = wt>=7;
 
@@ -368,12 +399,17 @@ function buildDays(){
       flowTrend:(STATE.cfg.flowFixed!=null?0:dayTrend),
       cloud:cloudCat(md.cloud), time:timeWindow(), season:seasonFromTemp(wt),
       airTemp:md.airMean, humidity:null, pressTrend:dP,
-      hatch:hs.cat                     // kun for visning (chips/logg/i morgen), ikke i indeksen
+      hatch:hs.cat                     // kategori kun for visning (chips/logg/i morgen)
     };
+    // klekkemodellens klekkeindeks (dagens topp) -> faktor i hovedindeksen + klekkebarometer
+    const klDay = klekkePeak(klekkeBase(date, wt, md.cloud, md.wind, md.precip, md.airMean,
+                   (prev?wt-prev.wt:(STATE.watertemp?STATE.watertemp.trend24:0)),
+                   (STATE.cfg.flowFixed!=null?0:dayTrend*100), 70));
+    if(klDay) st.klekke=klDay.ki/100;
     const idx=computeIndex(st);
 
     const day={ i, date, key, clim, md, wt, wtMeasured:(i===0&&wtMeasured), flowLevel, fcat,
-                clarity, state:st, idx, precip:md.precip, hatch:hs };
+                clarity, state:st, idx, precip:md.precip, hatch:hs, klekke:klDay };
     out.push(day);
     prev={...day, precip:md.precip};
   }
@@ -395,8 +431,12 @@ function buildDays(){
       airTemp:now.air, humidity:now.hum, pressTrend:now.dPress3,
       hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat   // kun for visning
     };
+    const klNow = klekkePeak(klekkeBase(new Date(), wtNow, now.cloud, now.wind, now.precip, now.air,
+                   (STATE.watertemp?STATE.watertemp.trend24:0),
+                   (STATE.cfg.flowFixed!=null?0:flowRelTrend()*100), now.hum));
+    if(klNow) st.klekke=klNow.ki/100;
     const sunElNow = solarPosition(new Date(), STATE.cfg.lat, STATE.cfg.lon).elevation;
-    STATE.now={ state:st, idx:computeIndex(st), wtNow, wtMeasured, fcat, clarity, windDir:now.windDir,
+    STATE.now={ state:st, idx:computeIndex(st), wtNow, wtMeasured, fcat, clarity, windDir:now.windDir, klekke:klNow,
                 hatch:hatchAdvice(new Date(), wtNow, now.cloud, now.precip, {fcat, clarity, sunEl:sunElNow, archetype:STATE.cfg.flyArchetype}), now };
   }
 }
@@ -521,6 +561,71 @@ function renderHero(){
   renderNowChips();
   renderBreakdown(idx, label);
   renderHatch(sel);
+  renderKlekke(sel);
+}
+
+/* ============================================================
+   KLEKKEBAROMETER (klekkemodell.js – artsspesifikk klekkeindeks)
+   ============================================================ */
+const KL_DIEL_TXT = {
+  dag:"midt på dagen", dag_skumring:"dag + skumring", sen_kveld:"sen kveld",
+  dag_kveld:"dag + kveld", tidlig_ettermiddag:"tidlig ettermiddag", skumring_natt:"skumring/natt"
+};
+/* akkumulerte døgngrader (TBASE=0) fra 1. jan til dato — baseline-median der den finnes, ellers estimat */
+function accumulatedDD(date){
+  const y=date.getFullYear(), doy=dagIAaret(date), B=STATE.tempBaseline;
+  let dd=0;
+  for(let d=1; d<=doy; d++){
+    let wt;
+    if(B&&B.water&&B.water[String(d)]) wt=B.water[String(d)][0];
+    else wt=estimateWaterTemp(new Date(y,0,d));
+    dd += Math.max(0, wt - (typeof TBASE!=="undefined"?TBASE:0));
+  }
+  return Math.round(dd);
+}
+/* adapter (brief pkt 1): rådata -> beregn()-input (uten hour). */
+function klekkeBase(date, vanntemp, sky, vind, nedbor, lufttemp, trend, flowPctEndring, fukt){
+  return { date, akkDD:accumulatedDD(date), vanntemp:(vanntemp==null?8:vanntemp),
+           trend:(trend==null?0:trend), flow:(flowPctEndring==null?0:flowPctEndring),
+           sky:(sky==null?50:sky), vind:(vind==null?0:vind), nedbor:(nedbor==null?0:nedbor),
+           lufttemp:(lufttemp==null?10:lufttemp), fukt:(fukt==null?70:fukt) };
+}
+/* dagens klekketopp: skann timene, returner {hour, r, ki} (eller null) */
+function klekkePeak(base){
+  if(typeof beregn==="undefined" || !base) return null;
+  const day=dagIAaret(base.date); let best=null;
+  for(let h=4;h<=23;h++){ const r=beregn({...base, day, hour:h}); if(!best||r.klekkeindeks>best.ki) best={hour:h, r, ki:r.klekkeindeks}; }
+  return best;
+}
+function renderKlekke(sel){
+  const host=$("klekkeBox"); if(!host) return;
+  if(typeof beregn==="undefined"){ host.innerHTML='<div class="empty">Klekkemodellen lastet ikke.</div>'; return; }
+  const peak = (sel==null) ? (STATE.now&&STATE.now.klekke) : (STATE.days[sel]&&STATE.days[sel].klekke);
+  if(!peak){ host.innerHTML='<div class="empty">Venter på data …</div>'; return; }
+  const r=peak.r, dom=r.dom, ki=Math.round(r.klekkeindeks);
+  const word = ki>=70?"Sterk klekking" : ki>=45?"Moderat klekking" : ki>=25?"Spredt klekking" : "Lite klekking";
+  const col  = ki>=70?"var(--teal)" : ki>=45?"var(--green)" : ki>=25?"var(--gold)" : "var(--mut)";
+  const arter = r.arter.map(a=>{
+    const inS=a.gate>0.05, pct=Math.round(a.klekkescore);
+    const kal = /KAL/.test(a.art.note) ? '<span class="kl-kal" title="Krever lokal kalibrering">KAL</span>' : '';
+    const diel = KL_DIEL_TXT[a.art.diel]||a.art.diel;
+    return `<div class="kl-art${inS?'':' off'}">
+      <div class="kl-art-h"><span class="kl-navn">${a.art.navn}</span><span class="kl-pct">${pct}</span></div>
+      <div class="kl-bar"><div class="kl-fill" style="width:${Math.min(100,pct)}%;background:${col}"></div></div>
+      <div class="kl-meta">${a.art.vanlig} · <b>${inS?'i sesong':'utenfor sesong'}</b> · vindu: ${diel} <span class="kl-konf">DD-konf: ${a.art.ddKonf}</span> ${kal}</div>
+    </div>`;
+  }).join("");
+  host.innerHTML=`
+    <div class="kl-top">
+      <div class="kl-gauge"><div class="kl-ki" style="color:${col}">${ki}</div><div class="kl-kilbl">klekke&shy;indeks /100</div></div>
+      <div class="kl-domwrap">
+        <div class="kl-word" style="color:${col}">${word}</div>
+        <div class="kl-dom">Dominerende: <b>${dom.art.navn}</b> <span class="muted">(${dom.art.vanlig})</span>${dom.gate>0.05?'':' <span class="muted">— utenfor sesong</span>'}</div>
+        <div class="kl-peak">Klekketopp ${sel==null?'i dag':'denne dagen'} rundt <b>kl ${String(peak.hour).padStart(2,'0')}</b></div>
+      </div>
+    </div>
+    <div class="kl-arter">${arter}</div>
+    <p class="kl-note muted">Artsspesifikk klekkemodell (døgngrader + vanntemp + diel-vindu). <b>KAL</b> = krever lokal kalibrering; tersklene er forskningsforankrede startverdier. Egen modell, uavhengig av hovedindeksen øverst.</p>`;
 }
 
 function chip(ct,cv,cu,cs,csClass,key,ts){
@@ -555,7 +660,9 @@ function renderNowChips(){
     return {label:st.label, val:"–", cls:""};
   });
   const tempFoot = tempMeasured ? "målt · NVE"
-                 : (STATE.cfg.tempOverride!=null ? "manuelt satt" : (STATE.cfg.hasKey?"estimat (modell)":"estimat · legg inn nøkkel"));
+                 : (STATE.cfg.tempOverride!=null ? "manuelt satt"
+                 : (STATE.tempBaseline ? "klimabaseline + MET-vær"
+                 : (STATE.cfg.hasKey?"estimat (modell)":"estimat · legg inn nøkkel")));
 
   // --- vannføring, én rad per stasjon (med kategori) ---
   const flowRows=sts.map(st=>{
@@ -587,7 +694,8 @@ function renderNowChips(){
   // --- måletidspunkt per chip (Endring 2): «Målt» kun for faktiske målinger, ellers MET/modell ---
   const firstFresh=param=>{ for(const st of sts){ const W=STATE.water[st.id]; if(W&&freshSeries(W[param])) return W[param].time; } return null; };
   const tTemp=firstFresh("temp"), tFlow=firstFresh("discharge"), metT=w.time;
-  const tsTemp = tTemp ? `Målt ${fmtMeasTime(tTemp,true)}` : `Modellert · MET ${fmtMeasTime(metT)}`;
+  const tsTemp = tTemp ? `Målt ${fmtMeasTime(tTemp,true)}`
+               : (STATE.tempBaseline ? `Baseline + MET ${fmtMeasTime(metT)}` : `Modellert · MET ${fmtMeasTime(metT)}`);
   const tsFlow = lake ? "" : (tFlow ? `Målt ${fmtMeasTime(tFlow,true)}` : `Modellert · MET ${fmtMeasTime(metT)}`);
   const tsAirWind = (O&&O.time) ? `Målt ${fmtMeasTime(O.time)}` : `MET ${fmtMeasTime(metT)}`;
   const tsClar = tFlow ? `Utledet · ${fmtMeasTime(tFlow,true)}` : `Utledet · MET ${fmtMeasTime(metT)}`;
@@ -802,8 +910,8 @@ async function refresh(){
   setLive("warn","henter data …");
   try{
     await loadConfig();
-    // vær + alle vannstasjoner + lokale værpunkt + målt (Frost) parallelt
-    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved()]);
+    // vær + alle vannstasjoner + lokale værpunkt + målt (Frost) + temp-baseline parallelt
+    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved(), loadTempBaseline()]);
     await loadFlowNormals();   // trenger STATE.dischargeStation fra loadWater
     buildDays();
     STATE.selected=null;
@@ -1609,7 +1717,7 @@ async function saveObs(){
 }
 
 /* ---------- mobil bunn-meny (faner) ---------- */
-const HOME_BLOCKS=["heroSec","gate","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec"];
+const HOME_BLOCKS=["heroSec","gate","forecast","mapsec","tempSec","dombasSec","pressSec","logsec","hatchSec","breakdownSec","klekkeSec"];
 const TAB_BLOCKS={
   dagsrapport:["forecast"],          // dagsrapporten er nå slått sammen med 14-dagers prognose
   fishon:["fishonSec","mapsec"],

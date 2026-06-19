@@ -37,8 +37,9 @@
   "leeZones": [],
   "terrainFile": "terrain/rena.json",
   "flyArchetype": "sel-grayling",
+  "tempBaseline": "temp_baseline/rena.json",
   "_todo": [
-    "Vanntemp: ingen aktiv NVE-temp-stasjon på Søndre Rena (2.686.0 Rena ndf. Storsjøen dam sluttet å rapportere sep. 2025) — temperaturen modelleres fra lufttemp. Bytt til måling hvis stasjonen begynner å rapportere igjen.",
+    "Vanntemp: ingen aktiv NVE-temp-stasjon på Søndre Rena — prognosen bruker en klimatologisk baseline (temp_baseline/rena.json, NVE 2.687.0 Rena ovf. Mistra 2015–2026) justert med MET-luftavvik mot Frost-luftnormal (SN7950). Erstatt med målt temp hvis en stasjon gjenopptar.",
     "Vannføring: Rena er regulert (Storsjøen-dammen styrer slippet på hele fiskestrekket). Nærmeste representative måler er 2.611.0 Storsjøen ndf. Øra, men den er p.t. utdatert (siste obs des. 2025) → føringen modelleres. Oppgraderes automatisk hvis stasjonen gjenopptar.",
     "Vannstandsgraf: ingen aktiv vannstand-stasjon (1000) på strekket → secondary=null (grafen skjult).",
     "LE-kart: 21 navngitte fiskeplasser fra KML (Storsjøen-dam ned mot Osa), 236–249 moh. Parkering/teltplass/fiskecamp luket bort."

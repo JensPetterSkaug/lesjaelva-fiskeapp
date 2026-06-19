@@ -115,10 +115,13 @@ function gates(s){
 
 const PART_LABELS = {
   temp:"Vanntemperatur", wind:"Vind (snitt)", flow:"Vannføring", light:"Lysforhold",
-  airtemp:"Lufttemperatur", humidity:"Luftfuktighet", press:"Lufttrykk-tendens"
+  klekke:"Klekking", airtemp:"Lufttemperatur", humidity:"Luftfuktighet", press:"Lufttrykk-tendens"
 };
+/* vekt for klekkemodellens klekkeindeks i hovedindeksen. Renormaliseres inn (de øvrige
+   skaleres ned proporsjonalt), så summen forblir 1. Kalibrerbar. */
+const W_KLEKKE = 0.18;
 
-/* state = {temp, windAvg, flowPct, flowTrend, cloud, time, season, airTemp, humidity, pressTrend} */
+/* state = {temp, windAvg, flowPct, flowTrend, cloud, time, season, airTemp, humidity, pressTrend, klekke} */
 function computeIndex(state){
   const light=sLight(state.cloud,state.time,state.season);
   const parts=[
@@ -130,6 +133,10 @@ function computeIndex(state){
     {key:"humidity",w:W.humidity,s:sHumidity(state.humidity)},
     {key:"press",   w:W.press,   s:sPressTrend(state.pressTrend)},
   ];
+  // klekkemodellens klekkeindeks (0..1) som egen faktor når tilgjengelig — vises etter Lys
+  if(state.klekke!=null) parts.splice(4,0,{key:"klekke", w:W_KLEKKE, s:Math.max(0,Math.min(1,state.klekke))});
+  const wsum=parts.reduce((a,p)=>a+p.w,0);
+  if(Math.abs(wsum-1)>1e-9) parts.forEach(p=>{ p.w=p.w/wsum; });   // normalisér vektene -> sum=1 (bidrag summerer til score)
   const raw=parts.reduce((a,p)=>a+p.w*p.s,0);
   const {g,msg,cls}=gates(state);
   const score=Math.round(100*g*raw);

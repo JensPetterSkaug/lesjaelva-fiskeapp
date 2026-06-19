@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesjaelva · Fiskedashboard – øvre Lågen sone 7</title>
-<link rel="stylesheet" href="/styles.css?v=20260618h">
+<link rel="stylesheet" href="/styles.css?v=20260619b">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -177,6 +177,12 @@
     <div id="bars"></div>
   </section>
 
+  <!-- KLEKKEBAROMETER (artsspesifikk klekkemodell, nederst) -->
+  <section class="panel klekke" id="klekkeSec">
+    <h3>Klekkebarometer <span class="muted">· arter i spill</span></h3>
+    <div id="klekkeBox" class="klekkebox">–</div>
+  </section>
+
   <footer>
     <p class="sub stations-foot" id="stationSub"></p>
     <div id="sources">
@@ -186,9 +192,10 @@
       <span id="updated"></span>
     </div>
     <div class="disclaimer">
-      <b>Modell:</b> Fiskeindeksen (kalibrert for ørret/harr i elv) vekter sju faktorer (vanntemp 0,25 · vind 0,25 ·
-      vannføring 0,20 · lys 0,15 · lufttemp 0,05 · luftfuktighet 0,05 · lufttrykk-tendens 0,05), med multiplikative
-      porter for ≥18–20 °C vanntemp, sterk snittvind (>6 m/s) og flom (~≥175 % av normal).
+      <b>Modell:</b> Fiskeindeksen (kalibrert for ørret/harr i elv) vekter åtte faktorer (vanntemp 0,25 · vind 0,25 ·
+      vannføring 0,20 · lys 0,15 · klekking 0,18 · lufttemp 0,05 · luftfuktighet 0,05 · lufttrykk-tendens 0,05 —
+      renormalisert til sum 1), med multiplikative porter for ≥18–20 °C vanntemp, sterk snittvind (>6 m/s) og flom (~≥175 % av normal).
+      Klekking = artsspesifikk klekkeindeks (egen klekkemodell, se «Klekkebarometer» nederst).
       Vind = snittvind fra yr (ikke kast). Vannføring = nivå i % av normal × trend-multiplikator (hysterese).
       Lufttemp, fuktighet, trykk-tendens, sky og vind fra yr.no; vanntemp og vannføring fra NVE Sildre.
       Vanntemperatur for kommende dager modelleres fra lufttemperatur med demping og smeltevannsgulv. Slutt å fiske ørret når vannet passerer 20 °C.
@@ -239,7 +246,8 @@
   <button data-tab="imorgen" aria-label="I morgen"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>I morgen</span></button>
 </nav>
 
-<script src="/scoring.js?v=20260618h"></script>
-<script src="/app.js?v=20260618h"></script>
+<script src="/scoring.js?v=20260619c"></script>
+<script src="/klekkemodell.js?v=20260619b"></script>
+<script src="/app.js?v=20260619c"></script>
 </body>
 </html>
