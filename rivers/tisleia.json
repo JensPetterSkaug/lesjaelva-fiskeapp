@@ -1,0 +1,53 @@
+{
+  "id": "tisleia",
+  "name": "Tisleia — Golsfjellet",
+  "shortName": "Tisleia",
+  "fishonTitle": "Fluevalg og bestefiskested i Tisleia",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Valdres",
+  "lat": 60.8328,
+  "lon": 9.034,
+  "altitude": 803,
+  "station": "12.136.0",
+  "stations": [
+    {
+      "id": "12.136.0",
+      "label": "Tisleifjord ndf. (vannføring + vannstand)"
+    },
+    {
+      "id": "12.334.0",
+      "label": "Tisleia ndf. Tisleifjorden (vanntemp – p.t. ikke aktiv)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Tisleifjorden (utløp)",
+      "lat": 60.8328,
+      "lon": 9.034,
+      "altitude": 803
+    },
+    {
+      "label": "Tisleia nedre",
+      "lat": 60.8739,
+      "lon": 9.2553,
+      "altitude": 748
+    }
+  ],
+  "secondary": {
+    "label": "Tisleifjord ndf.",
+    "nveStation": "12.136.0",
+    "normalsStation": "12.136.0",
+    "metLat": 60.8384,
+    "metLon": 9.0187,
+    "metAlt": 809
+  },
+  "leeZones": [],
+  "terrainFile": "terrain/tisleia.json",
+  "flyArchetype": "hemsil",
+  "_todo": [
+    "Vanntemp: ingen aktiv NVE-temp-stasjon på Tisleia (12.334.0 «Tisleia ndf. Tisleifjorden» har 0 obs siste 120+ dager) — temperaturen modelleres fra lufttemperatur. Stasjonen ligger i stations[] slik at appen automatisk tar den i bruk hvis den begynner å rapportere ferskt igjen.",
+    "Vannføring + vannstand: målt fra 12.136.0 «Tisleifjord ndf.» (utløpet av Tisleifjorden, fersk: ~11,6 m³/s). Tisleia er regulert, så føringen styres av slipp fra magasinet — representerer øvre strekning best; sidebekker (bl.a. Hovda) øker føringen nedover. Driver indeksbidraget og vannstandsgrafen med sesongnormal.",
+    "LE-kart: 7 navngitte fiskeplasser fra bruker (E6, Kapaøye, Øvre fluesone, Øya, To-øyene, Gode vakmuligheter, Bakevjeland), eksakte koordinater (748–798 moh, dalbunn). Terrenghorisont fra Kartverkets DTM.",
+    "Flueprofil: gjenbruker «hemsil» (ørret-dominert, regulert dalelv). Vurder egen arketype hvis fangstrapporter for Tisleia tilsier det."
+  ]
+}
