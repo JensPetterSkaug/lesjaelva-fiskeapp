@@ -582,7 +582,7 @@ function renderBesttid(sel){
     return;
   }
   const rows=rep.rows;
-  const byHour={}; rows.forEach(r=>{ byHour[r.h.hour]=r.best.r.score; });
+  const byHour={}, byHourWind={}; rows.forEach(r=>{ byHour[r.h.hour]=r.best.r.score; byHourWind[r.h.hour]=r.h.wind; });
   const peak=Math.max(...rows.map(r=>r.best.r.score));
   const hs=rows.filter(r=>r.best.r.score>=peak-5).map(r=>r.h.hour);
   const a=Math.min(...hs), b=Math.max(...hs)+1;
@@ -591,7 +591,7 @@ function renderBesttid(sel){
   for(let h=0;h<24;h++){
     const sc=byHour[h];
     if(sc==null){ bars+=`<div class="bt-bar bt-na" title="kl ${String(h).padStart(2,"0")}: ingen timesdata"></div>`; continue; }
-    const [,vc]=verdict(sc, null);
+    const [,vc]=verdict(sc, byHourWind[h]);   // vind > 5 m/s -> rød time
     const inWin = h>=a && h<b;
     bars+=`<div class="bt-bar${inWin?" win":""}" style="height:${Math.max(6,sc)}%;background:${vc}" title="kl ${String(h).padStart(2,"0")}: ${sc}/100"></div>`;
   }
@@ -976,7 +976,7 @@ function renderSpark(){
   const n=days.length, step=(W-2*pad)/(n-1);
   const pts=days.map((d,i)=>{ const x=pad+i*step, y=H-pad-(d.idx.score/100)*(H-2*pad); return [x,y]; });
   const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
-  const dots=pts.map((p,i)=>{ const [,vc]=verdict(days[i].idx.score); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${vc}"/>`; }).join("");
+  const dots=pts.map((p,i)=>{ const [,vc]=verdict(days[i].idx.score, days[i].md.wind); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${vc}"/>`; }).join("");
   $("fcSpark").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px" preserveAspectRatio="none">
     <line x1="${pad}" y1="${H-pad-0.5*(H-2*pad)}" x2="${W-pad}" y2="${H-pad-0.5*(H-2*pad)}" stroke="rgba(126,154,152,.2)" stroke-dasharray="3 4"/>
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;

@@ -102,15 +102,16 @@ function gates(s){
   // temp-port
   if(s.temp>=20){ g*=0.15; if(!msg){ msg="Vannet er ≥ 20 °C — ørreten er oksygenstresset. Indeksen er sterkt nedjustert, og du bør la fisken være."; cls="warn"; } }
   else if(s.temp>=18){ g*=0.6; if(!msg){ msg="Vannet nærmer seg stressgrensen (18–20 °C). Fisk tidlig/sent og land raskt."; cls="note"; } }
-  // vind-port: tørrfluepresentasjon kollapser over ~6 m/s snittvind
-  if(s.windAvg!=null && s.windAvg>6){
-    const wg = s.windAvg>=10 ? 0.15 : interp([[6,1.00],[7,0.55],[8,0.38],[10,0.20]], s.windAvg);
-    g*=wg;
-    if(!msg){ msg=`Sterk snittvind (${Math.round(s.windAvg)} m/s) gjør tørrfluefiske vanskelig — fisk tyngre nymfe/streamer eller søk le.`; cls="note"; }
+  // vind-port (HARD): snittvind > 5 m/s gjør tørrfluefiske vanskelig uansett øvrige
+  // forhold -> indeksen tvinges rød (computeIndex-cap + verdict). Gjelder alle elver.
+  let hardRed=false;
+  if(s.windAvg!=null && s.windAvg>5){
+    hardRed=true;
+    if(!msg){ msg=`Sterk snittvind (${Math.round(s.windAvg)} m/s, over 5 m/s) — tørrfluepresentasjonen kollapser. Indeksen er satt til rød uansett øvrige forhold; søk le, eller fisk tung nymfe/streamer.`; cls="warn"; }
   }
   // bakoverkompatibel flom/grums-port for time-for-time-modellen (kategori-felt)
   if(s.flow==="flood" || s.clarity==="muddy"){ g*=0.45; if(!msg){ msg="Flom eller svært grumset vann — søk klarere vann langs bredden eller vent."; cls="note"; } }
-  return {g,msg,cls};
+  return {g,msg,cls,hardRed};
 }
 
 const PART_LABELS = {
@@ -138,8 +139,9 @@ function computeIndex(state){
   const wsum=parts.reduce((a,p)=>a+p.w,0);
   if(Math.abs(wsum-1)>1e-9) parts.forEach(p=>{ p.w=p.w/wsum; });   // normalisér vektene -> sum=1 (bidrag summerer til score)
   const raw=parts.reduce((a,p)=>a+p.w*p.s,0);
-  const {g,msg,cls}=gates(state);
-  const score=Math.round(100*g*raw);
+  const {g,msg,cls,hardRed}=gates(state);
+  let score=Math.round(100*g*raw);
+  if(hardRed) score=Math.min(score,35);   // vind-port > 5 m/s -> rød indeks uansett
   // begrensende faktor = leddet som "stjeler" mest poeng: (1 - delskår) × vekt
   let limiting=parts[0], worst=-1;
   parts.forEach(p=>{ const room=(1-p.s)*p.w; if(room>worst){worst=room;limiting=p;} });
@@ -150,6 +152,8 @@ function computeIndex(state){
    Vind ≤ 3,0 m/s = rolig (tørrflue-vennlig); > 3,0 m/s = søk le.
    Returnerer [full label (vind-avhengig), farge, kort label (til trange visninger)]. */
 function verdict(v, windAvg){
+  // hard vind-port: snittvind > 5 m/s -> alltid rød (vanskelig), uansett indeks
+  if(windAvg!=null && windAvg>5) return ["Sterk vind — vanskelig","#d8624a","Vanskelig"];
   const windy = (windAvg!=null && windAvg>3.0);
   let color, calm, gust, short;
   if(v>=90){      color="#4fb6a8"; calm="Perfekt tørrfluefiske";     gust="Bra, men søk LE-plasser";          short="Perfekt"; }
