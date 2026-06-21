@@ -52,7 +52,17 @@ async function riverStatus(cfg){
     if(p50&&p50[doy]>0) flowPct=dis/p50[doy]*100;
     else { const a=[...disDist].sort((x,y)=>x-y), m=a[Math.floor(a.length/2)]; if(m) flowPct=dis/m*100; }
   }
-  // modellert temp hvis ingen måling (samme anker som app.js: nå-luft + smeltevannsgulv)
+  // klimabaseline (f.eks. Rena): bruk median[doy] når ingen fersk måling — SAMME kilde som
+  // dashbordet (app.js baselineWaterTemp). Uten denne falt forsiden tilbake på en grov
+  // luft-estimering (~19°) som trigget varmtvanns-porten og ga feil (lav) score.
+  if(wt==null && cfg.tempBaseline){
+    try{
+      const B=await getJSON('/'+cfg.tempBaseline);
+      const w=B&&B.water&&B.water[String(dayOfYear(new Date()))];
+      if(w&&w[0]!=null) wt=w[0];
+    }catch(e){}
+  }
+  // modellert temp hvis fortsatt ingen (samme anker som app.js: nå-luft + smeltevannsgulv)
   if(wt==null){ const fl=flowLevel>0.6?6:(flowLevel>0.42?4.5:-99); wt=Math.max(0,Math.min(19,Math.max(air-1.0,fl))); }
 
   const state={temp:wt, windAvg:wind, flowPct, flowTrend, cloud:cloudCat(cloud), time:timeWindowNow(),
