@@ -702,6 +702,8 @@ class Handler(BaseHTTPRequestHandler):
             "tempBaseline": cfg.get("tempBaseline"),
             "ddStation": cfg.get("ddStation"),
             "ddBiofix": cfg.get("ddBiofix"),
+            "wadeThreshold": cfg.get("wadeThreshold"),
+            "wadeLabel": cfg.get("wadeLabel"),
             "multiTenant": SINGLE_RIVER is None,
             "contact": CONTACT,
         })

@@ -1300,8 +1300,10 @@ function renderDombasChart(){
   if(nS){ allDates.forEach(dk=>{ const dy=doyFromKey(dk); np25.push(normAt(nS.p25,dy)); np50.push(normAt(nS.p50,dy)); np75.push(normAt(nS.p75,dy)); }); }
   const hasNorm=nS && np50.some(v=>v!=null);
 
+  const wadeT=(STATE.cfg&&STATE.cfg.wadeThreshold!=null)?STATE.cfg.wadeThreshold:null;
   let stageAll=histS.map(s=>s.v).concat(fc.map(f=>f.stage),fc.map(f=>f.lo),fc.map(f=>f.hi),[B]);
   if(hasNorm) stageAll=stageAll.concat(np25.filter(v=>v!=null),np75.filter(v=>v!=null));
+  if(wadeT!=null) stageAll=stageAll.concat([wadeT]);
   let sMin=Math.min(...stageAll), sMax=Math.max(...stageAll);
   const sPad=(sMax-sMin)*0.12||0.1; sMin-=sPad; sMax+=sPad;
   const W=1000,H=320,pL=48,pR=18,pT=14,pB=42, pw=W-pL-pR, ph=H-pT-pB;
@@ -1351,6 +1353,13 @@ function renderDombasChart(){
   const stageFcPath=fcLinePts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
   const todayX=x(iToday).toFixed(1);
   const baseY=yS(B).toFixed(1);
+  // «Vanskelig å vade»-terskel: rød strek over hele diagrammet på satt vannstandsnivå
+  let wadeLine="";
+  if(wadeT!=null){
+    const wy=yS(wadeT).toFixed(1), wlbl=(STATE.cfg.wadeLabel||"Vanskelig å vade");
+    wadeLine=`<line x1="${pL}" y1="${wy}" x2="${pL+pw}" y2="${wy}" stroke="#d8624a" stroke-width="2" stroke-dasharray="7 4"/>`
+      +`<text x="${pL+pw-4}" y="${(parseFloat(wy)-5).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" fill="#d8624a">${wlbl} · ${fmt2(wadeT)} m</text>`;
+  }
 
   host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:320px">
     ${grid}
@@ -1364,6 +1373,7 @@ function renderDombasChart(){
     <path d="${stageHistPath}" fill="none" stroke="#4fb6a8" stroke-width="2.4"/>
     <path d="${stageFcPath}" fill="none" stroke="#e0935a" stroke-width="2.4" stroke-dasharray="6 4"/>
     <circle cx="${todayX}" cy="${yS(histS[histS.length-1].v)}" r="3.6" fill="#4fb6a8"/>
+    ${wadeLine}
     ${axL}${xlab}
     <text x="${pL-6}" y="${pT-2}" text-anchor="end" font-size="10" fill="#7e9a98">m</text>
   </svg>`;
