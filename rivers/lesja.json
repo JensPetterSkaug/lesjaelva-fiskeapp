@@ -36,6 +36,9 @@
   ],
   "terrainFile": "terrain/lesja.json",
   "flyArchetype": "kald-hoyfjellselv",
+  "tempBaseline": "temp_baseline/lesja.json",
+  "ddStation": "2.303.0",
+  "ddBiofix": 100,
   "frostStation": "SN16845",
   "frostLabel": "Lora"
 }

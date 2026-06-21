@@ -632,17 +632,43 @@ const KL_DIEL_TXT = {
   dag:"midt på dagen", dag_skumring:"dag + skumring", sen_kveld:"sen kveld",
   dag_kveld:"dag + kveld", tidlig_ettermiddag:"tidlig ettermiddag", skumring_natt:"skumring/natt"
 };
-/* akkumulerte døgngrader (TBASE=0) fra 1. jan til dato — baseline-median der den finnes, ellers estimat */
+/* akkumulerte døgngrader (TBASE=0) fra biofix (ellers 1. jan) til dato. Kilde-prioritet:
+   1) STATE.ddSeries  = live målt døgntemp fra NVE (cfg.ddStation) — oppdateres hver lasting
+   2) STATE.tempBaseline = statisk målt/klimatologisk fil (reserve)
+   3) estimateWaterTemp = modell. Biofix (cfg.ddBiofix, dag-i-året) nullstiller før issmelting. */
 function accumulatedDD(date){
-  const y=date.getFullYear(), doy=dagIAaret(date), B=STATE.tempBaseline;
+  const y=date.getFullYear(), doy=dagIAaret(date), B=STATE.tempBaseline, M=STATE.ddSeries;
+  const biofix=(STATE.cfg&&STATE.cfg.ddBiofix)||0;
+  const TB=(typeof TBASE!=="undefined"?TBASE:0);
   let dd=0;
   for(let d=1; d<=doy; d++){
+    if(d<biofix) continue;                                 // ingen døgngrad før biofix (issmelting)
     let wt;
-    if(B&&B.water&&B.water[String(d)]) wt=B.water[String(d)][0];
-    else wt=estimateWaterTemp(new Date(y,0,d));
-    dd += Math.max(0, wt - (typeof TBASE!=="undefined"?TBASE:0));
+    if(M && M[String(d)]!=null) wt=M[String(d)];            // 1) live målt (NVE)
+    else if(B&&B.water&&B.water[String(d)]) wt=B.water[String(d)][0];   // 2) statisk fil
+    else wt=estimateWaterTemp(new Date(y,0,d));             // 3) modell
+    dd += Math.max(0, wt - TB);
   }
   return Math.round(dd);
+}
+/* live målt døgntemp for døgngrad-grunnlaget (cfg.ddStation) — henter hele sesongen fra NVE.
+   Gjør at klekkeindeksen oppdateres med ekte tall hver dag, uten lagring. */
+async function loadMeasuredDD(){
+  STATE.ddSeries=null;
+  const cfg=STATE.cfg; if(!cfg || !cfg.ddStation || !cfg.hasKey) return;
+  const to=new Date(), from=new Date(to.getFullYear(),0,1);
+  const ref=`${isoDate(from)}/${isoDate(to)}`;
+  try{
+    const r=await getJSON(`/api/nve/Observations?StationId=${cfg.ddStation}&Parameter=1003&ResolutionTime=1440&ReferenceTime=${ref}`);
+    if(!r||!r.data) return;
+    const series={}, yr=to.getFullYear();
+    for(const d of r.data){ if(d.parameter!==1003) continue;
+      for(const o of (d.observations||[])){ if(o.value==null) continue;
+        const dt=new Date(o.time); if(dt.getFullYear()!==yr) continue;   // kun inneværende år (unngå doy-kollisjon)
+        series[String(dagIAaret(dt))]=Math.max(0,o.value);               // is/vinter (<0) -> 0
+      } }
+    if(Object.keys(series).length) STATE.ddSeries=series;
+  }catch(e){}
 }
 /* adapter (brief pkt 1): rådata -> beregn()-input (uten hour). */
 function klekkeBase(date, vanntemp, sky, vind, nedbor, lufttemp, trend, flowPctEndring, fukt){
@@ -676,7 +702,50 @@ function renderKlekke(sel){
       <div class="kl-meta">${a.art.vanlig} · <b>${inS?'i sesong':'utenfor sesong'}</b> · vindu: ${diel} <span class="kl-konf">DD-konf: ${a.art.ddKonf}</span> ${kal}</div>
     </div>`;
   }).join("");
+  // info-popover: metode + forskning + per-art DD-terskel for «skikkelig i gang»
+  const ddDate = (sel==null) ? new Date() : ((STATE.days[sel]&&STATE.days[sel].date)||new Date());
+  const nowAkk = (typeof accumulatedDD==="function") ? accumulatedDD(ddDate) : null;
+  const biofixTxt = (STATE.cfg&&STATE.cfg.ddBiofix) ? `biofix ~dag ${STATE.cfg.ddBiofix} i året (issmelting)` : "1. januar";
+  const ddSrc = STATE.ddSeries ? `målt døgntemp (NVE ${STATE.cfg.ddStation})`
+              : (STATE.tempBaseline ? "målt/klimatologisk baseline" : "modellert vanntemp (luft)");
+  // framoverprojeksjon: akkumuler DD med modellert vanntemp-prognose (STATE.days[].wt) ->
+  // anslå dato hver art passerer terskelen sin
+  const TBdd=(typeof TBASE!=="undefined"?TBASE:0);
+  const fwd=(STATE.days||[]).slice(1).map(d=>({date:d.date, dd:Math.max(0,(d.wt||0)-TBdd)}));
+  const fwdAvg = fwd.length ? fwd.reduce((s,f)=>s+f.dd,0)/fwd.length : 0;
+  const fmtDDDate=d=>d.toLocaleDateString('no-NO',{day:'numeric',month:'long'});
+  function estHitDate(remaining){
+    let acc=0;
+    for(const f of fwd){ acc+=f.dd; if(acc>=remaining) return {d:f.date, beyond:false}; }
+    if(fwdAvg<0.2) return null;                                   // for lav temp-økning til å anslå
+    const extraDays=Math.ceil((remaining-acc)/fwdAvg);
+    const last=fwd.length?fwd[fwd.length-1].date:new Date();
+    return {d:new Date(last.getTime()+extraDays*864e5), beyond:true};
+  }
+  const ddRows = (typeof ARTER!=="undefined"?[...ARTER]:[]).sort((a,b)=>a.ddCenter-b.ddCenter).map(a=>{
+    const reached = nowAkk!=null && nowAkk>=a.ddCenter;
+    const st = nowAkk==null ? "" : (reached
+      ? `<span class="kl-dd-st" style="color:var(--teal)">i gang ✓</span>`
+      : `<span class="kl-dd-st muted">${a.ddCenter-nowAkk} DD igjen</span>`);
+    let estLine="";
+    if(nowAkk!=null && !reached){
+      const est=estHitDate(a.ddCenter-nowAkk);
+      estLine = est
+        ? `<div class="kl-dd-est">Slår inn (anslått): <b>~${fmtDDDate(est.d)}</b>${est.beyond?' <span class="muted">— utenfor 14-d prognosen, grovt anslag</span>':''}</div>`
+        : `<div class="kl-dd-est muted">Slår inn: usikkert — for lav temp-økning i prognosen</div>`;
+    }
+    return `<div class="kl-dd">
+      <div class="kl-dd-h"><span class="kl-dd-art">${a.navn}</span><span class="kl-dd-th">≈ ${a.ddCenter} DD</span>${st}</div>
+      ${estLine}
+      <div class="kl-dd-note">${a.note}</div></div>`;
+  }).join("");
+  const popHTML = `
+    <p><b>Slik beregnes klekkesannsynligheten.</b> Modellen summerer <b>døgngrader</b> (døgnmiddel-vanntemp over 0 °C) fra ${biofixTxt}. Hver art «kommer skikkelig i gang» rundt en forskningsforankret døgngrad-terskel — sannsynligheten følger en S-kurve som passerer ~50 % ved terskelen og stiger videre med spredningen. I tillegg vektes dagens vanntemp, døgnvindu (diel) og vær.</p>
+    ${nowAkk!=null?`<p class="muted">Akkumulert ${sel==null?'nå':'denne dagen'}: <b>${nowAkk} døgngrader</b> · kilde: ${ddSrc}.</p>`:""}
+    <div class="kl-ddlist">${ddRows}</div>
+    <p class="muted" style="margin-top:9px">«DD igjen» = antall døgngrader til arten passerer terskelen sin. Tersklene er forskningsforankrede startverdier (<b>KAL</b> = krever lokal kalibrering).</p>`;
   host.innerHTML=`
+    <button class="chip-i kl-i" type="button" data-info="klekke" aria-label="Om klekkemodellen og forskningen bak" aria-expanded="false">i</button>
     <div class="kl-top">
       <div class="kl-gauge"><div class="kl-ki" style="color:${col}">${ki}</div><div class="kl-kilbl">klekke&shy;indeks /100</div></div>
       <div class="kl-domwrap">
@@ -685,6 +754,7 @@ function renderKlekke(sel){
         <div class="kl-peak">Klekketopp ${sel==null?'i dag':'denne dagen'} rundt <b>kl ${String(peak.hour).padStart(2,'0')}</b></div>
       </div>
     </div>
+    <div class="chip-pop kl-pop" data-pop="klekke" hidden>${popHTML}</div>
     <div class="kl-arter">${arter}</div>
     <p class="kl-note muted">Artsspesifikk klekkemodell (døgngrader + vanntemp + diel-vindu). <b>KAL</b> = krever lokal kalibrering; tersklene er forskningsforankrede startverdier. Egen modell, uavhengig av hovedindeksen øverst.</p>`;
 }
@@ -699,6 +769,42 @@ const KAL_COL={
   siphlonurus:["#7BBE6A"], heptageniidae:["#6FA39A"], varfluer:["#8C82C4"]
 };
 const KAL_MONTHS=[["MAR",60],["APR",91],["MAI",121],["JUN",152],["JUL",182],["AUG",213],["SEP",244],["OKT",274]];
+const KAL_KILDER=`
+  <p><b>Hvor sesongkalenderen kommer fra.</b> «Typisk»-vinduene er klekkemodellens sesong-porter, hentet fra modellspesifikasjonen <i>«Klekkeindeks &amp; Tørrflueindeks for Elvepuls»</i> (Leveranse 4 — tabellen «Sesongvindu (Sør-Norge)»). «Live-estimat» projiserer de samme artenes forskningsforankrede døgngrad-terskler (DD-senter og -bredde) mot målt/modellert vanntemp, akkumulert fra biofix.</p>
+  <p class="muted">Forskning bak art-tersklene:</p>
+  <ul class="kal-refs">
+    <li>Sand &amp; Brittain (2009) — larveutvikling/døgngrader, <i>Baetis rhodani</i></li>
+    <li>Elliott (1972) — klekketemperatur (ned mot ~3 °C), <i>Baetis</i></li>
+    <li>López-Rodríguez m.fl. (2009) — kumulerte døgngrader, Ephemerellidae/<i>Serratella</i></li>
+    <li>Harper &amp; Peckarsky (2006) — vanntemp som klekke-proksy</li>
+    <li>Everall m.fl. (2015) — GDD &amp; livssyklus, <i>Ephemera danica</i></li>
+    <li>Sættem &amp; Brittain (1985) — skydekke/klekking, <i>Siphlonurus</i></li>
+    <li>Tszydel &amp; Błońska (2022) — pupping trigget av vårtemp/oksygen, vårfluer (Trichoptera)</li>
+    <li>Williams m.fl. (2011) — kryptiske arter i <i>B. rhodani</i>-komplekset</li>
+  </ul>
+  <p class="muted">Tersklene er forskningsforankrede startverdier som krever lokal kalibrering (<b>KAL</b>). Hver art viser sin egen kilde i klekkebarometerets (i)-knapp under.</p>`;
+/* daglig akkumulert DD-tidslinje (doy 1..304) for live-sesongkalenderen. Kildeprioritet som
+   accumulatedDD: målt (ddSeries) -> modellert prognose (STATE.days) -> baseline -> modell.
+   Biofix nullstiller før issmelting (cfg.ddBiofix, ellers dag 60 = 1. mars per forskningsspeken). */
+function ddTimelineCum(){
+  const y=new Date().getFullYear(), B=STATE.tempBaseline, M=STATE.ddSeries;
+  const biofix=(STATE.cfg&&STATE.cfg.ddBiofix)||60;
+  const fwt={}; (STATE.days||[]).forEach(d=>{ if(d.wt!=null) fwt[dagIAaret(d.date)]=d.wt; });
+  const TB=(typeof TBASE!=="undefined"?TBASE:0);
+  const cum=new Array(305).fill(0); let acc=0;
+  for(let d=1; d<=304; d++){
+    let wt=0;
+    if(d>=biofix){
+      if(M&&M[String(d)]!=null) wt=M[String(d)];
+      else if(fwt[d]!=null) wt=fwt[d];
+      else if(B&&B.water&&B.water[String(d)]) wt=B.water[String(d)][0];
+      else wt=estimateWaterTemp(new Date(y,0,d));
+    }
+    acc+=Math.max(0,wt-TB); cum[d]=acc;
+  }
+  return {cum, y, biofix};
+}
+function doyForDD(cum, target){ if(target<=0) return null; for(let d=1; d<=304; d++){ if(cum[d]>=target) return d; } return null; }
 function renderKalender(){
   const host=$("kalenderBox"); if(!host) return;
   if(typeof ARTER==="undefined"){ host.innerHTML='<div class="empty">Artsdata ikke lastet.</div>'; return; }
@@ -706,24 +812,48 @@ function renderKalender(){
   const pos=doy=>(Math.max(D0,Math.min(D0+SPAN,doy))-D0)/SPAN*100;
   const todayPos=pos(dagIAaret(new Date()));
   const ticks=KAL_MONTHS.map(([m,d])=>`<span class="kal-mtick" style="left:${pos(d)}%">${m}</span>`).join("");
-  const rows=ARTER.map(a=>{
+  const mode=STATE.kalMode||"typisk";
+
+  // TYPISK: statiske, forskningsforankrede sesong-porter
+  const staticRows=ARTER.map(a=>{
     const cols=KAL_COL[a.id]||["#6FA39A"];
     const bars=(a.gates||[]).map((g,gi)=>{
       const l=pos(g[0]), w=pos(g[1])-pos(g[0]);
       return `<span class="kal-bar" style="left:${l}%;width:${w}%;background:${cols[gi]||cols[0]}" title="${a.navn}"></span>`;
     }).join("");
-    return `<div class="kal-row">
-      <span class="kal-navn" title="${a.navn}">${a.navn}</span>
-      <span class="kal-track">${bars}<span class="kal-todayline" style="left:${todayPos}%"></span></span>
-    </div>`;
+    return `<div class="kal-row"><span class="kal-navn" title="${a.navn}">${a.navn}</span>
+      <span class="kal-track">${bars}<span class="kal-todayline" style="left:${todayPos}%"></span></span></div>`;
   }).join("");
+
+  // LIVE: DD-projisert per art (start ≈ terskel − ½ bredde, varighet ≈ DD-bredde)
+  const {cum,y,biofix}=ddTimelineCum();
+  const fmtD=doy=>new Date(y,0,doy).toLocaleDateString('no-NO',{day:'numeric',month:'long'});
+  const liveRows=ARTER.map(a=>{
+    const cols=KAL_COL[a.id]||["#6FA39A"], half=a.ddWidth/2;
+    const sDD=a.ddCenter-half, eDD=a.ddCenter+half;
+    const sDoy = sDD<=0 ? biofix : doyForDD(cum,sDD);
+    if(sDoy==null) return `<div class="kal-row"><span class="kal-navn" title="${a.navn}">${a.navn}</span><span class="kal-track"><span class="kal-live-na muted">utenfor sesong i år</span><span class="kal-todayline" style="left:${todayPos}%"></span></span></div>`;
+    const cDoy=doyForDD(cum,a.ddCenter), eDoy=doyForDD(cum,eDD), eD=eDoy||304;
+    const l=pos(sDoy), w=Math.max(1.5,pos(eD)-pos(sDoy));
+    const tip=`${a.navn}: anslått klekking ~${fmtD(sDoy)}–${eDoy?fmtD(eD):'(utover okt)'}${cDoy?` · topp ~${fmtD(cDoy)}`:''}`;
+    return `<div class="kal-row"><span class="kal-navn" title="${a.navn}">${a.navn}</span>
+      <span class="kal-track"><span class="kal-bar kal-bar-live" style="left:${l}%;width:${w}%;background:${cols[0]}" title="${tip}"></span>${cDoy?`<span class="kal-peak" style="left:${pos(cDoy)}%" title="topp ~${fmtD(cDoy)}"></span>`:''}<span class="kal-todayline" style="left:${todayPos}%"></span></span></div>`;
+  }).join("");
+  const src=STATE.ddSeries?`målt vanntemp (NVE ${STATE.cfg.ddStation})`:(STATE.tempBaseline?"målt/klimatologisk baseline":"modellert vanntemp (luft)");
+
+  const toggle=`<div class="kal-bar-row"><div class="kal-toggle">
+    <button type="button" class="kal-tg${mode==='typisk'?' on':''}" data-kalmode="typisk">Typisk</button>
+    <button type="button" class="kal-tg${mode==='live'?' on':''}" data-kalmode="live">Live-estimat</button></div>
+    <button class="chip-i" type="button" data-info="kalkilder" aria-label="Kilder for sesongkalenderen" aria-expanded="false">i</button></div>
+    <div class="chip-pop kal-kilde-pop" data-pop="kalkilder" hidden>${KAL_KILDER}</div>`;
   host.innerHTML=`
-    <div class="kal-row kal-head">
-      <span class="kal-navn"></span>
-      <span class="kal-track kal-axis">${ticks}<span class="kal-today-pill" style="left:${todayPos}%">I DAG</span></span>
-    </div>
-    ${rows}
-    <p class="kal-note muted">Klekkevinduene er forskningsforankrede startverdier (sesong-porter i klekkemodellen) — finjusteres lokalt. <b>I DAG</b>-streken viser hvor i sesongen vi er nå.</p>`;
+    ${toggle}
+    <div class="kal-row kal-head"><span class="kal-navn"></span><span class="kal-track kal-axis">${ticks}<span class="kal-today-pill" style="left:${todayPos}%">I DAG</span></span></div>
+    ${mode==='live'?liveRows:staticRows}
+    ${mode==='live'
+      ? `<p class="kal-note kal-live-note">⚡ <b>Grove estimater.</b> Live-kalenderen projiserer forskningens døgngrad-terskler (start ≈ terskel − ½ bredde, varighet ≈ DD-bredde) mot ${src}, akkumulert fra biofix (dag ${biofix}). Bjelken = anslått aktiv klekkeperiode, prikken = topp. Dette er anslag basert på foreliggende forskning — ikke en garanti; en kald eller varm vår flytter datoene.</p>`
+      : `<p class="kal-note muted">Klekkevinduene er forskningsforankrede startverdier (sesong-porter i klekkemodellen) — finjusteres lokalt. Bytt til <b>Live-estimat</b> for biofix-baserte datoer for denne elva. <b>I DAG</b>-streken viser hvor i sesongen vi er nå.</p>`}`;
+  host.querySelectorAll("[data-kalmode]").forEach(b=>b.onclick=()=>{ STATE.kalMode=b.dataset.kalmode; renderKalender(); });
 }
 
 function chip(ct,cv,cu,cs,csClass,key,ts){
@@ -1011,7 +1141,7 @@ async function refresh(){
   try{
     await loadConfig();
     // vær + alle vannstasjoner + lokale værpunkt + målt (Frost) + temp-baseline parallelt
-    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved(), loadTempBaseline()]);
+    await Promise.all([loadWeather(), loadWater(), loadWeatherPoints(), loadObserved(), loadTempBaseline(), loadMeasuredDD()]);
     await loadFlowNormals();   // trenger STATE.dischargeStation fra loadWater
     buildDays();
     STATE.selected=null;

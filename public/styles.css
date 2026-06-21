@@ -92,6 +92,21 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 /* Prognose: Sesongkalender (Gantt – klekkevinduer pr. art) */
 .kal-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em}
 .kal{font-size:13px}
+.kal-bar-row{display:flex;align-items:center;margin-bottom:14px}
+.kal-toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.kal-kilde-pop{margin:-4px 0 14px}
+.kal-refs{margin:4px 0 8px;padding-left:16px;line-height:1.5}
+.kal-refs li{font-size:11px;margin-bottom:2px;color:var(--mut)}
+.kal-refs li i{color:var(--mut2)}
+.kal-tg{background:none;border:none;color:var(--mut);font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer}
+.kal-tg+.kal-tg{border-left:1px solid var(--line)}
+.kal-tg.on{background:var(--teal-dim);color:#fff}
+.kal-bar-live{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.kal-peak{position:absolute;top:50%;width:7px;height:7px;border-radius:50%;background:var(--gold);
+  transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--panel);z-index:1}
+.kal-live-na{font-size:10.5px;line-height:26px}
+.kal-live-note{color:var(--gold);border-top:1px solid rgba(224,168,46,.3);padding-top:8px}
+.kal-live-note b{color:var(--gold)}
 .kal-row{display:grid;grid-template-columns:108px 1fr;align-items:center;height:26px}
 .kal-head{height:34px;margin-bottom:4px}
 .kal-navn{font-style:italic;font-size:12.5px;color:var(--ink);padding-right:8px;
@@ -198,6 +213,19 @@ h1{font-size:26px;font-weight:650;margin:0;letter-spacing:-0.02em}
 .hatchbox{font-size:13.5px;line-height:1.6}
 
 /* klekkebarometer */
+#klekkeBox{position:relative}
+.kl-i{position:absolute;top:-2px;right:0;z-index:2}
+.kl-pop{margin-top:10px}
+.kl-pop p{margin:0 0 8px}
+.kl-ddlist{display:flex;flex-direction:column;gap:7px;margin:4px 0 2px}
+.kl-dd{border-top:1px solid var(--line);padding-top:6px}
+.kl-dd-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.kl-dd-art{font-style:italic;color:var(--ink);font-size:12px}
+.kl-dd-th{font-family:var(--mono);font-size:11px;color:var(--ink)}
+.kl-dd-st{font-family:var(--mono);font-size:10.5px;margin-left:auto}
+.kl-dd-est{font-size:10.5px;color:var(--mut);margin-top:2px}
+.kl-dd-est b{color:var(--teal);font-weight:600}
+.kl-dd-note{color:var(--mut2);font-size:10.5px;line-height:1.45;margin-top:2px}
 .kl-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
 .kl-gauge{text-align:center;flex:0 0 auto}
 .kl-ki{font-family:var(--mono);font-size:46px;font-weight:600;line-height:1;letter-spacing:-0.02em}
