@@ -1,0 +1,52 @@
+{
+  "id": "jora",
+  "name": "Jora — Dovre",
+  "shortName": "Jora",
+  "fishonTitle": "Fluevalg og bestefiskested i Jora",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Dovre",
+  "lat": 62.1668,
+  "lon": 8.9236,
+  "altitude": 795,
+  "station": "2.481.0",
+  "stations": [
+    {
+      "id": "2.481.0",
+      "label": "Jora v/Nysetra (vanntemp + vannføring + vannstand – p.t. ikke aktiv)"
+    },
+    {
+      "id": "2.304.0",
+      "label": "Jora nedre (vannføring + vannstand – p.t. ikke aktiv)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Jora v/S-bøyen",
+      "lat": 62.1668,
+      "lon": 8.9236,
+      "altitude": 795
+    },
+    {
+      "label": "Jora øvre",
+      "lat": 62.19158,
+      "lon": 8.92227,
+      "altitude": 817
+    },
+    {
+      "label": "Jora nedre",
+      "lat": 62.13417,
+      "lon": 8.99817,
+      "altitude": 788
+    }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/jora.json",
+  "flyArchetype": "kald-hoyfjellselv",
+  "_todo": [
+    "Vanntemp + vannføring: Jora har to NVE-stasjoner — 2.481.0 «Jora v/Nysetra» (ved startpunktet, har temp+vannføring+vannstand) og 2.304.0 «Jora» (ved sluttpunktet, vannføring+vannstand) — men BEGGE rapporterer p.t. ingen ferske data (0 obs siste 10–20 dager, også på timesoppløsning). Temp og føring modelleres derfor nå. Begge ligger i stations[] så appen tar dem automatisk i bruk når/hvis de begynner å rapportere ferskt igjen.",
+    "Vannstandsgraf skjult (secondary=null) fordi vannstand-stasjonene er inaktive. Sett secondary til 2.481.0 eller 2.304.0 når en av dem leverer ferskt igjen.",
+    "LE-kart: 6 navngitte fiskeplasser fra bruker (Jora øvre, Fillingøyene, S-bøyen, Flaket, Sandbankeøya, Jora nedre), eksakte koordinater (788–817 moh, dalbunn). Terrenghorisont fra Kartverkets DTM.",
+    "Flueprofil: «kald-hoyfjellselv» (som Lesja — kald høyfjellselv på Dovre)."
+  ]
+}

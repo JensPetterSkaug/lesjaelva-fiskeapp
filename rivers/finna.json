@@ -1,0 +1,42 @@
+{
+  "id": "finna",
+  "name": "Finna — Vågå",
+  "shortName": "Finna",
+  "fishonTitle": "Fluevalg og bestefiskested i Finna",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Vågå",
+  "lat": 61.9311,
+  "lon": 8.8091,
+  "altitude": 783,
+  "station": "2.791.0",
+  "stations": [
+    {
+      "id": "2.791.0",
+      "label": "Vm Sterringi (vannstand – p.t. ikke aktiv)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Finna øvre",
+      "lat": 61.9276,
+      "lon": 8.7372,
+      "altitude": 794
+    },
+    {
+      "label": "Finna nedre",
+      "lat": 61.9347,
+      "lon": 8.881,
+      "altitude": 777
+    }
+  ],
+  "secondary": null,
+  "leeZones": [],
+  "terrainFile": "terrain/finna.json",
+  "flyArchetype": "kald-hoyfjellselv",
+  "_todo": [
+    "Vanntemp: ingen aktiv NVE-temp-stasjon på Finna — temperaturen modelleres fra lufttemperatur (kald høyfjellsdalelv, ~780 moh). De nærliggende temp-stasjonene ligger på Vågåvatnet (innsjø, ~30 km nedstrøms, mye varmere) og er IKKE representative — derfor bevisst ikke brukt som proxy.",
+    "Vannføring: modelleres. Ingen fersk måler representerer Finna — på-strekningen-vannmerkene Vm Sterringi (2.791.0), Breistulen (2.790.6) og Garmo (2.785.0) rapporterer ikke ferskt. Vågåvatn/Tessa-stasjonene er andre vassdrag/innsjø og ikke representative. Vannstandsgraf derfor skjult (secondary=null).",
+    "LE-kart: 8 auto-genererte senterlinjepunkt fra øvre (61.9276,8.7372) til nedre (61.9347,8.8810), snappet til dalbunn (794 → 777 moh), forankret i Vm Sterringi. PLASSHOLDERE med generiske navn — publisert; erstattes med ekte navngitte fiskeplasser når koordinatene foreligger.",
+    "Flueprofil: «kald-hoyfjellselv» (samme som Lesja — kald, snøsmelting-preget høyfjellselv)."
+  ]
+}
