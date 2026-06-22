@@ -1,0 +1,66 @@
+{
+  "id": "mistra",
+  "name": "Mistra — Rendalen",
+  "shortName": "Mistra",
+  "fishonTitle": "Fluevalg og bestefiskested i Mistra",
+  "eyebrow": "Elvefiske · live prognose · NVE Sildre + MET",
+  "region": "Rendalen",
+  "lat": 61.7048,
+  "lon": 11.2286,
+  "altitude": 295,
+  "station": "2.267.0",
+  "stations": [
+    {
+      "id": "2.267.0",
+      "label": "Mistra bru (vannføring + vannstand)"
+    },
+    {
+      "id": "2.695.0",
+      "label": "Mistra v/utløp (vanntemp – p.t. ikke aktiv)"
+    }
+  ],
+  "weatherPoints": [
+    {
+      "label": "Mistra (fiskesone)",
+      "lat": 61.7048,
+      "lon": 11.2286,
+      "altitude": 295
+    },
+    {
+      "label": "Mistra bru",
+      "lat": 61.7111,
+      "lon": 11.2419,
+      "altitude": 321
+    },
+    {
+      "label": "Mistra v/utløp",
+      "lat": 61.6972,
+      "lon": 11.2001,
+      "altitude": 255
+    }
+  ],
+  "secondary": {
+    "label": "Mistra bru",
+    "nveStation": "2.267.0",
+    "normalsStation": "2.267.0",
+    "metLat": 61.7111,
+    "metLon": 11.2419,
+    "metAlt": 321
+  },
+  "leeZones": [],
+  "terrainFile": "terrain/mistra.json",
+  "flyArchetype": "sel-grayling",
+  "flowByNormal": true,
+  "tempBaseline": "temp_baseline/rena.json",
+  "ddSenorge": true,
+  "ddBiofix": 100,
+  "ddAirToWater": 0.56,
+  "draft": true,
+  "_todo": [
+    "Vannføring + vannstand: målt fra NVE 2.267.0 «Mistra bru» (322 moh, fersk ~14 m³/s). Driver indeksbidraget, vannstandsgrafen (sesongnormal) og flowByNormal-kategorien.",
+    "Vanntemp: ingen aktiv NVE-temp-stasjon (2.695.0 «Mistra» og 2.687.0 «Rena ovf. Mistra» rapporterer ikke ferskt). VIST vanntemp bruker Rena sin klimabaseline (temp_baseline/rena.json) som proxy — Rena-munningen ligger rett ved Mistras utløp på samme høyde (~260 moh); ren luft-modell ga 19° og trigget stress-porten urealistisk (samme felle som Rena hadde). DØGNGRAD for klekkemodellen hentes fra seNorge griddet luft × 0,56 (Lesja-kalibrert). 2.695.0 ligger i stations[] for auto-aktivering hvis den våkner; bytt da fra baseline til måling.",
+    "LE-kart: 6 auto-genererte senterlinjepunkt fra Mistra bru (61.7111,11.2419) til utløpet i Rena (61.6972,11.2001), snappet til dalbunn (321 → 255 moh), forankret i de to stasjonene. PLASSHOLDERE — erstattes med ekte navngitte fiskeplasser når koordinatene foreligger.",
+    "Flueprofil: «sel-grayling» (harr/ørret i Østerdalen — som naboelva Rena). Vurder egen arketype ved fangstrapporter.",
+    "draft: true — fjern når ekte fiskeplasser er lagt inn for å publisere."
+  ]
+}
