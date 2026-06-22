@@ -65,10 +65,17 @@ async function riverStatus(cfg){
   // modellert temp hvis fortsatt ingen (samme anker som app.js: nå-luft + smeltevannsgulv)
   if(wt==null){ const fl=flowLevel>0.6?6:(flowLevel>0.42?4.5:-99); wt=Math.max(0,Math.min(19,Math.max(air-1.0,fl))); }
 
+  // lyn meldt nå eller neste ~6 t -> sikkerhetsport (samme som dashbordet)
+  let thunder=false;
+  for(const e of ts){ const dt=new Date(e.time).getTime();
+    if(dt<t0-36e5 || dt>t0+6*36e5) continue;
+    const n1=e.data.next_1_hours, n6=e.data.next_6_hours;
+    const sc=(n1&&n1.summary&&n1.summary.symbol_code)||(n6&&n6.summary&&n6.summary.symbol_code);
+    if(sc && /thunder/i.test(sc)){ thunder=true; break; } }
   const state={temp:wt, windAvg:wind, flowPct, flowTrend, cloud:cloudCat(cloud), time:timeWindowNow(),
-               season:seasonFromTemp(wt), airTemp:air, humidity:hum, pressTrend:(p3-press)};
+               season:seasonFromTemp(wt), airTemp:air, humidity:hum, pressTrend:(p3-press), thunder};
   const idx=computeIndex(state);
-  const [label,color]=verdict(idx.score, wind);
+  const [label,color]=verdict(idx.score, wind, thunder);
   return {score:idx.score, label, color};
 }
 

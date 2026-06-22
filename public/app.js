@@ -40,6 +40,22 @@ function symEmoji(code){
   if(c.includes("clear")) return "☀️";
   return "·";
 }
+/* MET-symbolkoder med «thunder» = meldt lyn/torden */
+function isThunder(sym){ return !!sym && /thunder/i.test(sym); }
+/* lyn meldt nå eller de nærmeste ~6 timene (MET timesoppløsning) */
+function thunderSoon(){
+  const ts=STATE.weather&&STATE.weather.properties&&STATE.weather.properties.timeseries;
+  if(!ts) return false;
+  const t0=Date.now();
+  for(const e of ts){
+    const dt=new Date(e.time).getTime();
+    if(dt<t0-36e5 || dt>t0+6*36e5) continue;            // vindu: ~siste time .. +6 t
+    const n1=e.data.next_1_hours, n6=e.data.next_6_hours;
+    const sc=(n1&&n1.summary&&n1.summary.symbol_code)||(n6&&n6.summary&&n6.summary.symbol_code);
+    if(isThunder(sc)) return true;
+  }
+  return false;
+}
 function timeWindowNow(){
   const h=osloHour(new Date());
   if(h<6||h>=21) return "lowlight";
@@ -237,6 +253,16 @@ function percentileRank(dist, v){
   const below=dist.filter(x=>x<=v).length;
   return below/dist.length;
 }
+/* invers av percentileRank: gir verdien (m³/s) ved persentil p i fordelingen.
+   Brukes til å mappe det modellerte 0–1-vannføringsnivået tilbake til en FAKTISK
+   føring innenfor elvas egen 60-dagers-skala (i stedet for å gange opp et forhold
+   mot et bittelite startnivå, som eksploderte på regndager). */
+function quantile(dist, p){
+  if(!dist||!dist.length) return null;
+  const a=[...dist].sort((x,y)=>x-y);
+  const idx=Math.max(0, Math.min(a.length-1, Math.round(Math.max(0,Math.min(1,p))*(a.length-1))));
+  return a[idx];
+}
 
 /* ---------- bygg MET dags-aggregater + nå-snapshot ---------- */
 function parseWeather(){
@@ -331,7 +357,6 @@ function buildDays(){
   if(STATE.discharge){
     flowLevel = percentileRank(STATE.discharge.dist, STATE.discharge.latest);
   }
-  const flowStart=flowLevel;            // dag-0-nivå (anker for % av normal framover)
   const nowPct=flowPctNow();            // % av normal nå (null hvis ingen vannføringsdata)
 
   // bygg 14 dager fra og med i dag
@@ -378,11 +403,14 @@ function buildDays(){
     const rising = prev ? (flowLevel-prev.flowLevel) : (STATE.discharge? Math.sign(STATE.discharge.trend24)*0.03 : 0);
     // vannføring i % av normal framover (flyttet opp – kan styre kategorien): estimert føring
     // (nå × modellert nivå-bane) / dag-spesifikk sesongnormal (normalen synker utover sommeren).
-    const estDis = (STATE.discharge && STATE.discharge.latest!=null && flowStart>0)
-                 ? STATE.discharge.latest*(flowLevel/flowStart) : null;
+    // mappe modellert 0–1-nivå tilbake til faktisk føring via elvas egen fordeling (bounded,
+    // ingen eksplosjon på regndager); dag 0 ≈ målt verdi siden quantile er inversen av percentileRank
+    const estDis = STATE.discharge ? quantile(STATE.discharge.dist, flowLevel) : null;
     const nrmDay = flowNormalFor(date);
-    const dayPct = (estDis!=null && nrmDay) ? estDis/nrmDay*100
-                 : (nowPct!=null && flowStart>0 ? nowPct*(flowLevel/flowStart) : null);
+    let dayPct;
+    if(estDis!=null && nrmDay) dayPct = estDis/nrmDay*100;
+    else if(estDis!=null && nowPct!=null && STATE.discharge.latest>0) dayPct = nowPct*(estDis/STATE.discharge.latest);
+    else dayPct = (i===0 ? nowPct : null);
     const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
     // kategori: % av sesongnormal når elva er satt opp for det (flowByNormal) -> «Flom» = faktisk
     // høyt vs normalen og SAMME referanse som flom-porten => chip og dagsrapport blir konsistente.
@@ -404,7 +432,8 @@ function buildDays(){
       flowTrend:(STATE.cfg.flowFixed!=null?0:dayTrend),
       cloud:cloudCat(md.cloud), time:timeWindow(), season:seasonFromTemp(wt),
       airTemp:md.airMean, humidity:null, pressTrend:dP,
-      hatch:hs.cat                     // kategori kun for visning (chips/logg/i morgen)
+      hatch:hs.cat,                    // kategori kun for visning (chips/logg/i morgen)
+      thunder:isThunder(md.sym)        // lyn meldt denne dagen -> sikkerhetsport
     };
     // klekkemodellens klekkeindeks (dagens topp) -> faktor i hovedindeksen + klekkebarometer
     const klDay = klekkePeak(klekkeBase(date, wt, md.cloud, md.wind, md.precip, md.airMean,
@@ -414,7 +443,7 @@ function buildDays(){
     const idx=computeIndex(st);
 
     const day={ i, date, key, clim, md, wt, wtMeasured:(i===0&&wtMeasured), flowLevel, fcat,
-                clarity, state:st, idx, precip:md.precip, hatch:hs, klekke:klDay };
+                clarity, state:st, idx, precip:md.precip, hatch:hs, klekke:klDay, thunder:isThunder(md.sym) };
     out.push(day);
     prev={...day, precip:md.precip};
   }
@@ -436,7 +465,8 @@ function buildDays(){
       flowTrend:(STATE.cfg.flowFixed!=null?0:flowRelTrend()),
       cloud:cloudCat(now.cloud), time:timeWindowNow(), season:seasonFromTemp(wtNow),
       airTemp:now.air, humidity:now.hum, pressTrend:now.dPress3,
-      hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat   // kun for visning
+      hatch:hatchState(new Date(), wtNow, now.cloud, now.precip).cat,  // kun for visning
+      thunder:thunderSoon()            // lyn nå eller neste ~6 t -> sikkerhetsport
     };
     const klNow = klekkePeak(klekkeBase(new Date(), wtNow, now.cloud, now.wind, now.precip, now.air,
                    (STATE.watertemp?STATE.watertemp.trend24:0),
@@ -553,7 +583,7 @@ function renderHero(){
     label=dayLabel(d.date)+(d.clim?" · klimatologi":"");
   }
   $("score").textContent=idx.score;
-  const [vt,vc]=verdict(idx.score, st.windAvg);
+  const [vt,vc]=verdict(idx.score, st.windAvg, st.thunder);
   $("verdict").textContent=vt; $("verdict").style.color=vc;
   $("fill").style.width=idx.score+"%"; $("fill").style.background=vc;
   $("gaugeWhen").innerHTML = (sel==null?"Nå":`<span class="reset" id="resetNow" style="cursor:pointer;color:var(--teal)">‹ Nå</span> · ${label}`);
@@ -589,7 +619,7 @@ function renderBesttid(sel){
     return;
   }
   const rows=rep.rows;
-  const byHour={}, byHourWind={}; rows.forEach(r=>{ byHour[r.h.hour]=r.best.r.score; byHourWind[r.h.hour]=r.h.wind; });
+  const byHour={}, byHourWind={}, byHourThunder={}; rows.forEach(r=>{ byHour[r.h.hour]=r.best.r.score; byHourWind[r.h.hour]=r.h.wind; byHourThunder[r.h.hour]=isThunder(r.h.sym); });
   const peak=Math.max(...rows.map(r=>r.best.r.score));
   const hs=rows.filter(r=>r.best.r.score>=peak-5).map(r=>r.h.hour);
   const a=Math.min(...hs), b=Math.max(...hs)+1;
@@ -598,7 +628,7 @@ function renderBesttid(sel){
   for(let h=0;h<24;h++){
     const sc=byHour[h];
     if(sc==null){ bars+=`<div class="bt-bar bt-na" title="kl ${String(h).padStart(2,"0")}: ingen timesdata"></div>`; continue; }
-    const [,vc]=verdict(sc, byHourWind[h]);   // vind > 5 m/s -> rød time
+    const [,vc]=verdict(sc, byHourWind[h], byHourThunder[h]);   // vind > 5 m/s / lyn -> rød time
     const inWin = h>=a && h<b;
     bars+=`<div class="bt-bar${inWin?" win":""}" style="height:${Math.max(6,sc)}%;background:${vc}" title="kl ${String(h).padStart(2,"0")}: ${sc}/100"></div>`;
   }
@@ -1113,7 +1143,7 @@ function dayLabel(d){ return `${DOW[d.getDay()]} ${d.getDate()}. ${MON[d.getMont
 function renderForecast(){
   const strip=$("fcStrip");
   strip.innerHTML=STATE.days.map(d=>{
-    const [vt,vc,vs]=verdict(d.idx.score, d.md.wind);
+    const [vt,vc,vs]=verdict(d.idx.score, d.md.wind, d.thunder);
     const sel=(STATE.selected===d.i)?"sel":"";
     const wtTxt=`${fmt1(d.wt)}°`;
     const wd=d.md.windDir;
@@ -1138,7 +1168,7 @@ function renderSpark(){
   const n=days.length, step=(W-2*pad)/(n-1);
   const pts=days.map((d,i)=>{ const x=pad+i*step, y=H-pad-(d.idx.score/100)*(H-2*pad); return [x,y]; });
   const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
-  const dots=pts.map((p,i)=>{ const [,vc]=verdict(days[i].idx.score, days[i].md.wind); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${vc}"/>`; }).join("");
+  const dots=pts.map((p,i)=>{ const [,vc]=verdict(days[i].idx.score, days[i].md.wind, days[i].thunder); return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${vc}"/>`; }).join("");
   $("fcSpark").innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px" preserveAspectRatio="none">
     <line x1="${pad}" y1="${H-pad-0.5*(H-2*pad)}" x2="${W-pad}" y2="${H-pad-0.5*(H-2*pad)}" stroke="rgba(126,154,152,.2)" stroke-dasharray="3 4"/>
     <path d="${path}" fill="none" stroke="var(--teal-dim)" stroke-width="1.5"/>${dots}</svg>`;
@@ -1775,7 +1805,7 @@ function buildDayReport(dayIndex){
     const pcat=pressCat(h.press, h.dP);
     const hcat=hatchState(h.date, wt, h.cloud, h.precip).cat;
     const env={temp:wt, cloud:h.cloud, wind:h.wind, windFrom:h.windFrom, press:pcat,
-               flow:day.fcat, clarity:day.clarity, hatch:hcat,
+               flow:day.fcat, clarity:day.clarity, hatch:hcat, thunder:isThunder(h.sym),
                sunEl:sp.elevation, sunAz:sp.azimuth, bright};
     const scored=T.map(p=>({p, r:spotHourScore(env,p)})).sort((a,b)=>b.r.score-a.r.score);
     const fly=hourFlyTip(h.date, wt, h.cloud, h.precip, sp.elevation, bright);
@@ -1837,11 +1867,11 @@ function renderDailyReport(){
   rows.forEach(r=>{ const n=r.best.p.navn||leePlace(r.best.p.lon); placeCount[n]=(placeCount[n]||0)+1; });
   const topPlace=Object.entries(placeCount).sort((a,b)=>b[1]-a[1])[0];
   const peakRow=rows.find(r=>r.best.r.score===peak);
-  const [pvt,pvc]=verdict(peak, peakRow?peakRow.h.wind:null);
+  const [pvt,pvc]=verdict(peak, peakRow?peakRow.h.wind:null, peakRow?isThunder(peakRow.h.sym):false);
 
   // tabellrader
   const body=rows.map(r=>{
-    const [vt,vc,vs]=verdict(r.best.r.score, r.h.wind);
+    const [vt,vc,vs]=verdict(r.best.r.score, r.h.wind, isThunder(r.h.sym));
     const [lt,lemo]=LIGHT_LABEL(r);
     const name=r.best.p.navn||leePlace(r.best.p.lon);
     const [stag,sc]=shelterTag(r.best.r.shelter);
@@ -1912,7 +1942,7 @@ async function logForecast(){
   if(!STATE.now) return;
   const now=STATE.now, w=now.now;
   const prim=STATE.water[STATE.primary]||{}, sec=secondaryWater();
-  const [vt]=verdict(now.idx.score, now.state.windAvg);
+  const [vt]=verdict(now.idx.score, now.state.windAvg, now.state.thunder);
   const row={
     dato: osloDateKey(new Date()),
     river: (STATE.cfg&&STATE.cfg.id)||"lesja",
@@ -2026,7 +2056,7 @@ function renderTomorrow(){
   const host=$("tomorrowSec"); if(!host) return;
   const d=STATE.days&&STATE.days[1];
   if(!d){ host.innerHTML=`<div class="panel"><div class="empty">Venter på data …</div></div>`; return; }
-  const [vt,vc]=verdict(d.idx.score, d.md.wind);
+  const [vt,vc]=verdict(d.idx.score, d.md.wind, d.thunder);
   let leTxt="–";
   if(STATE.terrain&&STATE.terrain.length&&d.md.windDir!=null){
     const best=STATE.terrain.map(p=>({p,s:shelterDeg(p,d.md.windDir)})).sort((a,b)=>b.s-a.s)[0];

@@ -87,7 +87,12 @@ const sWind ={breeze:1.00,calm:0.80,fresh:0.55,strong:0.30};
 /* multiplikative porter; G = produkt (hver ≤ 1). Setter også varsel-melding. */
 function gates(s){
   let g=1, msg="", cls="";
-  // flom-port (sikkerhet) – høyest prioritet på melding
+  // LYN-PORT (sikkerhet, høyest prioritet): meldt lyn/torden -> ikke fisk.
+  const thunder = !!s.thunder;
+  if(thunder){
+    msg="⚡ Fare for lyn og torden — fiske ikke anbefalt. Vær med fluestang ved vann er livsfarlig i tordenvær; vent til cellen har trukket forbi."; cls="warn";
+  }
+  // flom-port (sikkerhet)
   if(s.flowPct!=null && s.flowPct>=175){
     const falling=(s.flowTrend!=null && s.flowTrend<-0.05);
     let fg = s.flowPct>=250?0.10 : s.flowPct>=200?0.20 : (1.00-0.55*(s.flowPct-175)/25);
@@ -111,7 +116,7 @@ function gates(s){
   }
   // bakoverkompatibel flom/grums-port for time-for-time-modellen (kategori-felt)
   if(s.flow==="flood" || s.clarity==="muddy"){ g*=0.45; if(!msg){ msg="Flom eller svært grumset vann — søk klarere vann langs bredden eller vent."; cls="note"; } }
-  return {g,msg,cls,hardRed};
+  return {g,msg,cls,hardRed,thunder};
 }
 
 const PART_LABELS = {
@@ -139,9 +144,10 @@ function computeIndex(state){
   const wsum=parts.reduce((a,p)=>a+p.w,0);
   if(Math.abs(wsum-1)>1e-9) parts.forEach(p=>{ p.w=p.w/wsum; });   // normalisér vektene -> sum=1 (bidrag summerer til score)
   const raw=parts.reduce((a,p)=>a+p.w*p.s,0);
-  const {g,msg,cls,hardRed}=gates(state);
+  const {g,msg,cls,hardRed,thunder}=gates(state);
   let score=Math.round(100*g*raw);
   if(hardRed) score=Math.min(score,35);   // vind-port > 5 m/s -> rød indeks uansett
+  if(thunder) score=Math.min(score,8);    // lyn-port -> indeksen stenges ned (sikkerhet)
   // begrensende faktor = leddet som "stjeler" mest poeng: (1 - delskår) × vekt
   let limiting=parts[0], worst=-1;
   parts.forEach(p=>{ const room=(1-p.s)*p.w; if(room>worst){worst=room;limiting=p;} });
@@ -151,7 +157,9 @@ function computeIndex(state){
 /* merkelapp + farge etter indeks (0–100) OG snittvind (m/s).
    Vind ≤ 3,0 m/s = rolig (tørrflue-vennlig); > 3,0 m/s = søk le.
    Returnerer [full label (vind-avhengig), farge, kort label (til trange visninger)]. */
-function verdict(v, windAvg){
+function verdict(v, windAvg, thunder){
+  // lyn-port (sikkerhet, høyest prioritet)
+  if(thunder) return ["⚡ Fare for lyn — fiske ikke anbefalt","#d8624a","Lyn ⚡"];
   // hard vind-port: snittvind > 5 m/s -> alltid rød (vanskelig), uansett indeks
   if(windAvg!=null && windAvg>5) return ["Sterk vind — vanskelig","#d8624a","Vanskelig"];
   const windy = (windAvg!=null && windAvg>3.0);
@@ -203,8 +211,8 @@ function flowCat(level, rising, warm){
    «Flom» = faktisk høyt vs normalen (≥175 %, samme terskel som flom-porten) — ikke bare
    topp av siste 60 dager. Gjør at merkelapp, flom-port og dagsrapport bruker SAMME referanse. */
 function flowCatByPct(pct, relTrend, warm){
-  if(pct>=175) return "flood";
-  if(pct>=130) return (relTrend>0.10?"flood":"high");
+  if(pct>=175) return "flood";              // «Flom» = faktisk flom (≥175 % av normal)
+  if(pct>=130) return "high";               // 130–175 % = «Litt høy», aldri flom
   if(pct<=45)  return (warm?"drought":"lowclear");
   if(pct<=70)  return (relTrend>0.06?"risingfromlow":"lowclear");
   return "optimal";
@@ -548,10 +556,12 @@ function spotHourScore(env, point){
     {key:"clarity",w:WH.clarity,s:sClar[env.clarity]},
   ];
   const raw=parts.reduce((a,p)=>a+p.w*p.s,0);
-  const {g}=gates({temp:env.temp, flow:env.flow, clarity:env.clarity});
+  const {g,thunder}=gates({temp:env.temp, flow:env.flow, clarity:env.clarity, thunder:env.thunder});
+  let score=Math.round(100*g*raw);
+  if(thunder) score=Math.min(score,8);   // lyn-port (sikkerhet) -> rød time
   let best=parts[0], room=-1;
   parts.forEach(p=>{ const r=(1-p.s)*p.w; if(r>room){room=r;best=p;} });
-  return {score:Math.round(100*g*raw), parts, shaded, shelter, wcat, g, limiting:best};
+  return {score, parts, shaded, shelter, wcat, g, thunder, limiting:best};
 }
 
 /* kort flueråd tilpasset lyset/årstiden den timen */
