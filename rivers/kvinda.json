@@ -40,6 +40,7 @@
   "leeZones": [],
   "terrainFile": "terrain/kvinda.json",
   "flyArchetype": "hemsil",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp + vannføring + vannstand: alt MÅLT fra NVE 12.614.0 «Kvinda» (60.6322,8.4881, ~710 moh), som ligger på sluttkoordinaten for fiskesonen og rapporterer ferskt (temp ~12,2°, føring ~1,2 m³/s). Kvinda er en liten elv — vannføringen er beskjeden. NB: samme stasjon brukes av Holselva-profilen som ren temp-proxy (tempOnly), men her brukes den fullt ut for Kvinda selv.",
     "LE-kart: 6 auto-genererte senterlinjepunkt fra øvre (60.6404,8.4494) til NVE-stasjonen (60.6322,8.4881), snappet til dalbunn (727 → 710 moh). PLASSHOLDERE med generiske navn («Kvinda – strekning N») — publisert; erstattes med ekte navngitte fiskeplasser når koordinatene foreligger.",

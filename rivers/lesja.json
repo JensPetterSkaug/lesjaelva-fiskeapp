@@ -41,6 +41,7 @@
   "ddBiofix": 100,
   "wadeThreshold": 1.22,
   "wadeLabel": "Vanskelig å vade",
+  "flowByNormal": true,
   "frostStation": "SN16845",
   "frostLabel": "Lora"
 }

@@ -44,6 +44,7 @@
   "leeZones": [],
   "terrainFile": "terrain/hemsil.json",
   "flyArchetype": "hemsil",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp: ingen aktiv NVE-temp-stasjon på Hemsil (12.551.0 rapporterer ikke) — temperaturen modelleres fra lufttemperatur. Bytt til måling hvis en stasjon begynner å rapportere igjen, eller koble lokal temp-logger.",
     "Vannføring: hentes fra Grunke (12.197.0), en øvre regulering i Hemsil-systemet — Hemsil er regulert, så føring ved fiskesona styres av kraftverksslipp. Representativitet usikker.",

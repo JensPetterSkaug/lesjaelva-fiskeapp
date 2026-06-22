@@ -44,6 +44,7 @@
   "leeZones": [],
   "terrainFile": "terrain/hallingdal.json",
   "flyArchetype": "hemsil",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp: hentes fra 12.608.0 Hallingdalselva v/Nesbyen — SAMME elv, ~10 km nedstrøms fiskesonen (alle temp-stasjoner PÅ Ål–Gol-strekket er døde: 12.550.0 Vermefoss, 12.306.0 Svenkerud, 12.305.0 ndf. Dokkelvi). Godt proxy; temp ved fiskesonen kan være litt kjøligere enn nedstrøms. Bytt til en strekk-stasjon hvis en gjenopptar.",
     "Vannføring + vannstand: 12.9.0 Oppsjø bru (rett ovf. fiskesonens øvre ende, ndf. Strondafjorden). Representerer øvre/sentrale strekk der de fleste fiskeplassene ligger; vannføringen øker nedstrøms mot Gol (Svenkerud 12.167.0 ~47 vs Oppsjø ~11 m³/s).",

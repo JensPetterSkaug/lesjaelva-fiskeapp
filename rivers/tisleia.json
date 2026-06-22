@@ -44,6 +44,7 @@
   "leeZones": [],
   "terrainFile": "terrain/tisleia.json",
   "flyArchetype": "hemsil",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp: ingen aktiv NVE-temp-stasjon på Tisleia (12.334.0 «Tisleia ndf. Tisleifjorden» har 0 obs siste 120+ dager) — temperaturen modelleres fra lufttemperatur. Stasjonen ligger i stations[] slik at appen automatisk tar den i bruk hvis den begynner å rapportere ferskt igjen.",
     "Vannføring + vannstand: målt fra 12.136.0 «Tisleifjord ndf.» (utløpet av Tisleifjorden, fersk: ~11,6 m³/s). Tisleia er regulert, så føringen styres av slipp fra magasinet — representerer øvre strekning best; sidebekker (bl.a. Hovda) øker føringen nedover. Driver indeksbidraget og vannstandsgrafen med sesongnormal.",

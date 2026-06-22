@@ -222,10 +222,12 @@ async function loadWater(){
 /* fersk NVE-serie? (eldre enn 5 dager = stasjonen rapporterer ikke lenger) */
 function freshSeries(s){ return !!(s && s.time && (Date.now()-new Date(s.time).getTime())<5*864e5); }
 /* vannføringskategori for en gitt stasjon (egen 60-dagers fordeling) */
-function stationFlowCat(W){
+function stationFlowCat(W, pct){
   if(!W||!W.discharge) return null;
-  const lvl=percentileRank(W.discharge.dist, W.discharge.latest);
   const warm=W.temp?W.temp.latest>=7:true;
+  if(STATE.cfg && STATE.cfg.flowByNormal && pct!=null)   // % av sesongnormal når elva er satt opp for det
+    return flowCatByPct(pct, Math.sign(W.discharge.trend24)*0.06, warm);
+  const lvl=percentileRank(W.discharge.dist, W.discharge.latest);
   return flowCat(lvl, Math.sign(W.discharge.trend24)*0.04, warm);
 }
 
@@ -374,7 +376,19 @@ function buildDays(){
       flowLevel = Math.max(0, Math.min(1, flowLevel));
     }
     const rising = prev ? (flowLevel-prev.flowLevel) : (STATE.discharge? Math.sign(STATE.discharge.trend24)*0.03 : 0);
-    const fcat = (STATE.cfg.hasKey || i>0) ? flowCat(flowLevel, rising, warm) : "optimal";
+    // vannføring i % av normal framover (flyttet opp – kan styre kategorien): estimert føring
+    // (nå × modellert nivå-bane) / dag-spesifikk sesongnormal (normalen synker utover sommeren).
+    const estDis = (STATE.discharge && STATE.discharge.latest!=null && flowStart>0)
+                 ? STATE.discharge.latest*(flowLevel/flowStart) : null;
+    const nrmDay = flowNormalFor(date);
+    const dayPct = (estDis!=null && nrmDay) ? estDis/nrmDay*100
+                 : (nowPct!=null && flowStart>0 ? nowPct*(flowLevel/flowStart) : null);
+    const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
+    // kategori: % av sesongnormal når elva er satt opp for det (flowByNormal) -> «Flom» = faktisk
+    // høyt vs normalen og SAMME referanse som flom-porten => chip og dagsrapport blir konsistente.
+    const fcat = (STATE.cfg.hasKey || i>0)
+      ? (STATE.cfg.flowByNormal && dayPct!=null ? flowCatByPct(dayPct, dayTrend, warm) : flowCat(flowLevel, rising, warm))
+      : "optimal";
 
     // --- klarhet, klekking, lys, vind, trykk, stabilitet ---
     const recentRain = md.precip + (prev?0.4*prev.precip:0);
@@ -384,15 +398,6 @@ function buildDays(){
     const dCloud = prev ? (md.cloud-prev.cloud) : 0;
     const scat = stabCat(dCloud, dP);
     const hs = hatchState(date, wt, md.cloud, md.precip);
-
-    // vannføring i % av normal framover: estimert føring (nå × modellert nivå-bane)
-    // delt på dag-spesifikk sesongnormal (normalen synker f.eks. utover sommeren).
-    const estDis = (STATE.discharge && STATE.discharge.latest!=null && flowStart>0)
-                 ? STATE.discharge.latest*(flowLevel/flowStart) : null;
-    const nrmDay = flowNormalFor(date);
-    const dayPct = (estDis!=null && nrmDay) ? estDis/nrmDay*100
-                 : (nowPct!=null && flowStart>0 ? nowPct*(flowLevel/flowStart) : null);
-    const dayTrend = prev ? (flowLevel-prev.flowLevel)/(prev.flowLevel||1) : (STATE.discharge?flowRelTrend():0);
     const st={
       temp:wt, windAvg:md.wind,
       flowPct:(STATE.cfg.flowFixed!=null?STATE.cfg.flowFixed:dayPct),
@@ -419,7 +424,9 @@ function buildDays(){
   if(now){
     const wtNow = (STATE.watertemp?STATE.watertemp.latest:out[0].wt);
     const warm=wtNow>=7;
-    const fcatNow = STATE.cfg.hasKey ? flowCat(flowLevel0(), nowFlowTrend(), warm) : null;
+    const fcatNow = STATE.cfg.hasKey
+      ? (STATE.cfg.flowByNormal && flowPctNow()!=null ? flowCatByPct(flowPctNow(), flowRelTrend(), warm) : flowCat(flowLevel0(), nowFlowTrend(), warm))
+      : null;
     const fcat = fcatNow || out[0].fcat;
     const recentRain = now.precip;
     const clarity = STATE.cfg.clarityOverride || clarityFromFlow(fcat, recentRain);
@@ -895,12 +902,13 @@ function renderNowChips(){
   // --- vannføring, én rad per stasjon (med kategori) ---
   const flowRows=sts.map(st=>{
     const W=STATE.water[st.id];
-    if(W&&freshSeries(W.discharge)){ const tr=W.discharge.trend24, a=trendArrow(tr,0.3), cat=stationFlowCat(W);
+    if(W&&freshSeries(W.discharge)){ const tr=W.discharge.trend24, a=trendArrow(tr,0.3),
+        cat=stationFlowCat(W, st.id===STATE.dischargeStation?flowPctNow():null);
       return {label:st.label, cls:tr>0.3?"up":(tr<-0.3?"down":""),
         val:`${fmt1(W.discharge.latest)} ${a} <span class="catx">${FLOW_LABEL[cat]}</span>`}; }
     return {label:st.label, val:"–", cls:""};
   });
-  const flowFoot = STATE.cfg.hasKey ? "m³/s · kategori vs 60 dager" : "krever NVE-nøkkel";
+  const flowFoot = STATE.cfg.hasKey ? (STATE.cfg.flowByNormal?"m³/s · kategori vs sesongnormal":"m³/s · kategori vs 60 dager") : "krever NVE-nøkkel";
 
   // --- lufttemp + vind, én rad per lokalt værpunkt (Brustugubrue, Leirmo) ---
   const wpts=STATE.wpts||[];

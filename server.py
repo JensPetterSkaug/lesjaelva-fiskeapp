@@ -704,6 +704,7 @@ class Handler(BaseHTTPRequestHandler):
             "ddBiofix": cfg.get("ddBiofix"),
             "wadeThreshold": cfg.get("wadeThreshold"),
             "wadeLabel": cfg.get("wadeLabel"),
+            "flowByNormal": cfg.get("flowByNormal"),
             "multiTenant": SINGLE_RIVER is None,
             "contact": CONTACT,
         })

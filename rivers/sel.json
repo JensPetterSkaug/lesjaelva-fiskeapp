@@ -44,6 +44,7 @@
   "leeZones": [],
   "terrainFile": "terrain/sel.json",
   "flyArchetype": "sel-grayling",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp + vannstandsgraf: Lågen ovf. Otta 2 (2.1239.0) — temp og vannstand. Vannføring finnes IKKE på denne stasjonen, så vannførings-faktoren i indeksen hentes fortsatt fra Lalm (2.25.0).",
     "LE-kart: de 6 terrengpunktene er auto-genererte langs elve-senterlinja — kan erstattes med faktiske, navngitte fiskeplasser i sone 5 (Selsvollene) når koordinater foreligger."

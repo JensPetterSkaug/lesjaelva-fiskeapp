@@ -199,6 +199,16 @@ function flowCat(level, rising, warm){
   if(level<=0.34) return (rising>0.04?"risingfromlow":"lowclear");
   return "optimal";
 }
+/* vannføring-kategori fra % av sesongnormal (når elva har god normal: cfg.flowByNormal).
+   «Flom» = faktisk høyt vs normalen (≥175 %, samme terskel som flom-porten) — ikke bare
+   topp av siste 60 dager. Gjør at merkelapp, flom-port og dagsrapport bruker SAMME referanse. */
+function flowCatByPct(pct, relTrend, warm){
+  if(pct>=175) return "flood";
+  if(pct>=130) return (relTrend>0.10?"flood":"high");
+  if(pct<=45)  return (warm?"drought":"lowclear");
+  if(pct<=70)  return (relTrend>0.06?"risingfromlow":"lowclear");
+  return "optimal";
+}
 /* klarhet utledet av flow-kategori + nedbør siste døgn (mm) */
 function clarityFromFlow(fcat, recentRainMm){
   if(fcat==="flood") return "muddy";

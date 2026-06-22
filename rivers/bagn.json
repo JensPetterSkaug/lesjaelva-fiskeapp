@@ -44,6 +44,7 @@
   "leeZones": [],
   "terrainFile": "terrain/bagn.json",
   "flyArchetype": "hemsil",
+  "flowByNormal": true,
   "_todo": [
     "Vanntemp: hentes fra 12.608.0 Hallingdalselva v/Nesbyen — NB: en NABOELV (Hallingdal), ikke Begna, ~27 km unna, brukt som regionalt proxy fordi alle temp-stasjoner på Begna ved Bagn er døde/feilende (12.333.0 Begna v/Leite bru sluttet 10.06.2026 med urealistiske 22–23°). Bytt til en Begna-stasjon hvis en pålitelig dukker opp.",
     "Vannføring + vannstand: målt fra 12.290.0 (Bagn), midt i fiskesonen — driver indeksbidraget og vannstandsgrafen med sesongnormal.",
