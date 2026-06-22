@@ -39,7 +39,7 @@
   "tempBaseline": "temp_baseline/lesja.json",
   "ddStation": "2.303.0",
   "ddBiofix": 100,
-  "wadeThreshold": 1.22,
+  "wadeThreshold": 1.55,
   "wadeLabel": "Vanskelig å vade",
   "flowByNormal": true,
   "frostStation": "SN16845",
