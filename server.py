@@ -75,6 +75,23 @@ USER_AGENT = "LesjaelvaFiskedashboard/1.0 (kontakt: %s)" % CONTACT
 NVE_BASE = "https://hydapi.nve.no/api/v1/"
 MET_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
 NVE_ALLOWED = {"Stations", "Series", "Observations", "Parameters", "Percentiles"}
+GTS_BASE = "https://gts.nve.no/api/GridTimeSeries"          # seNorge griddet døgndata
+SENORGE_THEMES = {"tm", "rr", "tn", "tx"}                   # temp-snitt/-min/-maks, nedbør
+
+def latlon_to_utm33(lat, lon):
+    """WGS84 lat/lon -> UTM sone 33N (EPSG:32633) meter. Snyder-serien (mm-nær)."""
+    import math
+    a = 6378137.0; f = 1/298.257223563; e2 = 2*f - f*f; ep2 = e2/(1-e2); k0 = 0.9996
+    lon0 = math.radians(15.0); phi = math.radians(lat); lam = math.radians(lon) - lon0
+    N = a/math.sqrt(1 - e2*math.sin(phi)**2); T = math.tan(phi)**2; C = ep2*math.cos(phi)**2
+    A = math.cos(phi)*lam
+    M = a*((1 - e2/4 - 3*e2**2/64 - 5*e2**3/256)*phi
+           - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024)*math.sin(2*phi)
+           + (15*e2**2/256 + 45*e2**3/1024)*math.sin(4*phi)
+           - (35*e2**3/3072)*math.sin(6*phi))
+    x = k0*N*(A + (1-T+C)*A**3/6 + (5-18*T+T*T+72*C-58*ep2)*A**5/120) + 500000.0
+    y = k0*(M + N*math.tan(phi)*(A*A/2 + (5-T+9*C+4*C*C)*A**4/24 + (61-58*T+T*T+600*C-330*ep2)*A**6/720))
+    return round(x), round(y)
 
 # Standardverdier for Lesjaelva / øvre Lågen, sone 7 (Lesjaverk-stasjonen 2.346.0).
 DEFAULTS = {
@@ -570,6 +587,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_obs_series(qs)
         if path.startswith("/api/nve/"):
             return self.handle_nve(path[len("/api/nve/"):], parsed.query)
+        if path == "/api/senorge":
+            return self.handle_senorge(qs)
         if path == "/api/normals":
             cfg = load_config()
             key = cfg.get("nveApiKey")
@@ -702,6 +721,8 @@ class Handler(BaseHTTPRequestHandler):
             "tempBaseline": cfg.get("tempBaseline"),
             "ddStation": cfg.get("ddStation"),
             "ddBiofix": cfg.get("ddBiofix"),
+            "ddSenorge": cfg.get("ddSenorge"),
+            "ddAirToWater": cfg.get("ddAirToWater"),
             "wadeThreshold": cfg.get("wadeThreshold"),
             "wadeLabel": cfg.get("wadeLabel"),
             "flowByNormal": cfg.get("flowByNormal"),
@@ -741,6 +762,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "bad_coords"}, 400)
         url = "%s?lat=%s&lon=%s&altitude=%s" % (MET_URL, lat, lon, alt)
         status, ct, body = fetch(url, {"User-Agent": USER_AGENT, "Accept": "application/json"})
+        self.send_raw(status, "application/json; charset=utf-8", body)
+
+    # ---- seNorge (NVE GridTimeSeries): griddet døgntemp/-nedbør for ethvert punkt ----
+    def handle_senorge(self, qs):
+        import re
+        try:
+            lat = float((qs.get("lat") or [""])[0]); lon = float((qs.get("lon") or [""])[0])
+        except Exception:
+            return self.send_json({"error": "bad_coords"}, 400)
+        fr = (qs.get("from") or [""])[0]; to = (qs.get("to") or [""])[0]
+        theme = (qs.get("theme") or ["tm"])[0]
+        d = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+        if not d.match(fr) or not d.match(to) or theme not in SENORGE_THEMES:
+            return self.send_json({"error": "bad_params"}, 400)
+        x, y = latlon_to_utm33(lat, lon)
+        url = "%s/%d/%d/%s/%s/%s.json" % (GTS_BASE, x, y, fr, to, theme)
+        status, ct, body = fetch(url, {"Accept": "application/json"})
         self.send_raw(status, "application/json; charset=utf-8", body)
 
     # ---- Frost: faktiske observasjoner (vind/temp/trykk) ----

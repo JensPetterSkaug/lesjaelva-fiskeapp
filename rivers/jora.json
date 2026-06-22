@@ -43,6 +43,9 @@
   "leeZones": [],
   "terrainFile": "terrain/jora.json",
   "flyArchetype": "kald-hoyfjellselv",
+  "ddSenorge": true,
+  "ddBiofix": 100,
+  "ddAirToWater": 0.56,
   "_todo": [
     "Vanntemp + vannføring: Jora har to NVE-stasjoner — 2.481.0 «Jora v/Nysetra» (ved startpunktet, har temp+vannføring+vannstand) og 2.304.0 «Jora» (ved sluttpunktet, vannføring+vannstand) — men BEGGE rapporterer p.t. ingen ferske data (0 obs siste 10–20 dager, også på timesoppløsning). Temp og føring modelleres derfor nå. Begge ligger i stations[] så appen tar dem automatisk i bruk når/hvis de begynner å rapportere ferskt igjen.",
     "Vannstandsgraf skjult (secondary=null) fordi vannstand-stasjonene er inaktive. Sett secondary til 2.481.0 eller 2.304.0 når en av dem leverer ferskt igjen.",

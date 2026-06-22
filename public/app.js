@@ -660,22 +660,46 @@ function accumulatedDD(date){
 }
 /* live målt døgntemp for døgngrad-grunnlaget (cfg.ddStation) — henter hele sesongen fra NVE.
    Gjør at klekkeindeksen oppdateres med ekte tall hver dag, uten lagring. */
+/* seNorge StartDate «16.06.2026 06:00:00» -> Date (kl 12 for å unngå tidssone-kant) */
+function parseSenorgeDate(s){ const m=String(s||"").match(/(\d{2})\.(\d{2})\.(\d{4})/); return m?new Date(+m[3], +m[2]-1, +m[1], 12,0,0):null; }
 async function loadMeasuredDD(){
-  STATE.ddSeries=null;
-  const cfg=STATE.cfg; if(!cfg || !cfg.ddStation || !cfg.hasKey) return;
-  const to=new Date(), from=new Date(to.getFullYear(),0,1);
-  const ref=`${isoDate(from)}/${isoDate(to)}`;
-  try{
-    const r=await getJSON(`/api/nve/Observations?StationId=${cfg.ddStation}&Parameter=1003&ResolutionTime=1440&ReferenceTime=${ref}`);
-    if(!r||!r.data) return;
-    const series={}, yr=to.getFullYear();
-    for(const d of r.data){ if(d.parameter!==1003) continue;
-      for(const o of (d.observations||[])){ if(o.value==null) continue;
-        const dt=new Date(o.time); if(dt.getFullYear()!==yr) continue;   // kun inneværende år (unngå doy-kollisjon)
-        series[String(dagIAaret(dt))]=Math.max(0,o.value);               // is/vinter (<0) -> 0
-      } }
-    if(Object.keys(series).length) STATE.ddSeries=series;
-  }catch(e){}
+  STATE.ddSeries=null; STATE.ddSourceLabel=null;
+  const cfg=STATE.cfg; if(!cfg) return;
+  const to=new Date(), from=new Date(to.getFullYear(),0,1), yr=to.getFullYear();
+  // 1) ekte målt vannstasjon (NVE param 1003) -> beste kilde
+  if(cfg.ddStation && cfg.hasKey){
+    const ref=`${isoDate(from)}/${isoDate(to)}`;
+    try{
+      const r=await getJSON(`/api/nve/Observations?StationId=${cfg.ddStation}&Parameter=1003&ResolutionTime=1440&ReferenceTime=${ref}`);
+      if(r&&r.data){
+        const series={};
+        for(const d of r.data){ if(d.parameter!==1003) continue;
+          for(const o of (d.observations||[])){ if(o.value==null) continue;
+            const dt=new Date(o.time); if(dt.getFullYear()!==yr) continue;   // kun inneværende år
+            series[String(dagIAaret(dt))]=Math.max(0,o.value);               // is/vinter (<0) -> 0
+          } }
+        if(Object.keys(series).length){ STATE.ddSeries=series; STATE.ddSourceLabel=`målt vanntemp (NVE ${cfg.ddStation})`; }
+      }
+    }catch(e){}
+    return;
+  }
+  // 2) seNorge griddet luft × lokal kalibrert luft->vann-faktor (elver uten vannstasjon)
+  if(cfg.ddSenorge){
+    const k=(cfg.ddAirToWater!=null?cfg.ddAirToWater:0.56);
+    try{
+      const r=await getJSON(`/api/senorge?lat=${cfg.lat}&lon=${cfg.lon}&from=${isoDate(from)}&to=${isoDate(to)}&theme=tm`);
+      const raw=(r&&r.Data)||[], start=parseSenorgeDate(r&&r.StartDate);
+      if(raw.length && start){
+        const series={};
+        raw.forEach((v,i)=>{ if(v==null||v<=-60||v>=60) return;            // dropp NoData (65535)
+          const dt=new Date(start.getTime()+i*864e5);
+          if(dt.getFullYear()!==yr) return;
+          series[String(dagIAaret(dt))]=Math.max(0, v*k);                  // luft -> vann via faktor
+        });
+        if(Object.keys(series).length){ STATE.ddSeries=series; STATE.ddSourceLabel=`seNorge griddet luft × ${k} (kal. mot Lesja)`; }
+      }
+    }catch(e){}
+  }
 }
 /* adapter (brief pkt 1): rådata -> beregn()-input (uten hour). */
 function klekkeBase(date, vanntemp, sky, vind, nedbor, lufttemp, trend, flowPctEndring, fukt){
@@ -713,7 +737,7 @@ function renderKlekke(sel){
   const ddDate = (sel==null) ? new Date() : ((STATE.days[sel]&&STATE.days[sel].date)||new Date());
   const nowAkk = (typeof accumulatedDD==="function") ? accumulatedDD(ddDate) : null;
   const biofixTxt = (STATE.cfg&&STATE.cfg.ddBiofix) ? `biofix ~dag ${STATE.cfg.ddBiofix} i året (issmelting)` : "1. januar";
-  const ddSrc = STATE.ddSeries ? `målt døgntemp (NVE ${STATE.cfg.ddStation})`
+  const ddSrc = STATE.ddSeries ? (STATE.ddSourceLabel || "målt døgntemp")
               : (STATE.tempBaseline ? "målt/klimatologisk baseline" : "modellert vanntemp (luft)");
   // framoverprojeksjon: akkumuler DD med modellert vanntemp-prognose (STATE.days[].wt) ->
   // anslå dato hver art passerer terskelen sin
@@ -846,7 +870,7 @@ function renderKalender(){
     return `<div class="kal-row"><span class="kal-navn" title="${a.navn}">${a.navn}</span>
       <span class="kal-track"><span class="kal-bar kal-bar-live" style="left:${l}%;width:${w}%;background:${cols[0]}" title="${tip}"></span>${cDoy?`<span class="kal-peak" style="left:${pos(cDoy)}%" title="topp ~${fmtD(cDoy)}"></span>`:''}<span class="kal-todayline" style="left:${todayPos}%"></span></span></div>`;
   }).join("");
-  const src=STATE.ddSeries?`målt vanntemp (NVE ${STATE.cfg.ddStation})`:(STATE.tempBaseline?"målt/klimatologisk baseline":"modellert vanntemp (luft)");
+  const src=STATE.ddSeries?(STATE.ddSourceLabel||"målt vanntemp"):(STATE.tempBaseline?"målt/klimatologisk baseline":"modellert vanntemp (luft)");
 
   const toggle=`<div class="kal-bar-row"><div class="kal-toggle">
     <button type="button" class="kal-tg${mode==='typisk'?' on':''}" data-kalmode="typisk">Typisk</button>

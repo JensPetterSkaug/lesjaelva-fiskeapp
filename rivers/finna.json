@@ -33,6 +33,9 @@
   "leeZones": [],
   "terrainFile": "terrain/finna.json",
   "flyArchetype": "kald-hoyfjellselv",
+  "ddSenorge": true,
+  "ddBiofix": 100,
+  "ddAirToWater": 0.56,
   "_todo": [
     "Vanntemp: ingen aktiv NVE-temp-stasjon på Finna — temperaturen modelleres fra lufttemperatur (kald høyfjellsdalelv, ~780 moh). De nærliggende temp-stasjonene ligger på Vågåvatnet (innsjø, ~30 km nedstrøms, mye varmere) og er IKKE representative — derfor bevisst ikke brukt som proxy.",
     "Vannføring: modelleres. Ingen fersk måler representerer Finna — på-strekningen-vannmerkene Vm Sterringi (2.791.0), Breistulen (2.790.6) og Garmo (2.785.0) rapporterer ikke ferskt. Vågåvatn/Tessa-stasjonene er andre vassdrag/innsjø og ikke representative. Vannstandsgraf derfor skjult (secondary=null).",
